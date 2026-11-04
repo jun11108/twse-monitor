@@ -41,40 +41,50 @@ def get_twse_data():
             )
             page = context.new_page()
 
-            page.goto("https://www.twse.com.tw/dashboard/zh/credit/lending.html", wait_until="networkidle", timeout=45000)
-            page.wait_for_timeout(3000)
+            # 1. 直接開啟「信用交易 (margin.html)」（此頁面才有「全市場」頁籤）
+            page.goto("https://www.twse.com.tw/dashboard/zh/credit/margin.html", wait_until="networkidle", timeout=45000)
+            page.wait_for_timeout(4000)
 
-            # 關鍵步驟：點擊頁面上方的「全市場」頁籤按鈕 (3個字)
+            # 2. 點擊頁面上方的「全市場」頁籤按鈕 (3個字)
             try:
                 loc_exact = page.get_by_text("全市場", exact=True)
-                if loc_exact.count() > 0:
-                    for idx in range(loc_exact.count()):
-                        try:
-                            loc_exact.nth(idx).click(timeout=2000)
-                            page.wait_for_timeout(4000)
-                        except Exception:
-                            pass
-                else:
-                    loc_any = page.get_by_text("全市場")
-                    if loc_any.count() > 0:
-                        loc_any.first.click(timeout=2000)
-                        page.wait_for_timeout(4000)
+                cnt = loc_exact.count()
+                for idx in range(cnt):
+                    try:
+                        loc_exact.nth(idx).click(timeout=2000)
+                        page.wait_for_timeout(5000)
+                    except Exception:
+                        pass
             except Exception:
                 pass
 
-            # 捲動頁面確保所有卡片渲染完畢
-            for scroll_y in [400, 1000, 0]:
+            # 3. 備援：透過 JavaScript 直接尋找文字為「全市場」的按鈕/頁籤並觸發 click()
+            try:
+                page.evaluate("""() => {
+                    const els = Array.from(document.querySelectorAll('button, a, li, div, span'));
+                    els.forEach(el => {
+                        if (el.innerText && el.innerText.trim() === '全市場') {
+                            el.click();
+                        }
+                    });
+                }""")
+                page.wait_for_timeout(5000)
+            except Exception:
+                pass
+
+            # 4. 捲動頁面確保所有卡片渲染完畢
+            for scroll_y in [400, 900, 0]:
                 page.evaluate("window.scrollTo(0, " + str(scroll_y) + ")")
                 page.wait_for_timeout(800)
 
-            # 讀取日期輸入框的值
+            # 5. 讀取日期輸入框的值
             try:
                 vals = page.evaluate("() => Array.from(document.querySelectorAll('input, select')).map(el => el.value).filter(v => v)")
                 input_dates.extend(vals)
             except Exception:
                 pass
 
-            # 讀取切換到「全市場」後的完整頁面文字
+            # 6. 讀取切換到「全市場」後的完整頁面文字
             for frame in page.frames:
                 try:
                     vis_texts.append(frame.inner_text("body"))
@@ -90,10 +100,10 @@ def get_twse_data():
 
     pos = compact.find("全市場擔保維持率")
     if pos != -1:
-        info["debug_hint"] = compact[pos:pos + 220]
+        info["debug_hint"] = compact[pos:pos + 250]
     else:
         pos2 = compact.find("全市場")
-        info["debug_hint"] = compact[pos2:pos2 + 220] if pos2 != -1 else compact[:220]
+        info["debug_hint"] = compact[pos2:pos2 + 250] if pos2 != -1 else compact[:250]
 
     # 1. 解析資料日期 (排除 2026-08-03 起始日)
     for v in input_dates:
@@ -237,7 +247,7 @@ def main():
         "<tr><td><b>第 3 批 (25%)</b></td><td>106.25 萬</td><td><b>&le; 12.67 元</b> (-15.0% / 約 67.1 張)</td><td><b>&le; 150%</b> (或處分>5億)</td><td>85萬 009816 ＋ 21.25萬 VOO</td></tr>",
         "<tr><td><b>第 4 批 (25%)</b></td><td>106.25 萬</td><td><b>&le; 11.63 元</b> (-22.0% / 約 73.1 張)</td><td><b>&le; 142%~145%</b> (斷頭谷底)</td><td>85萬 009816 ＋ 21.25萬 VOO</td></tr>",
         "</table>",
-        "<p style='margin-top: 15px;'><a href='https://www.twse.com.tw/dashboard/zh/credit/lending.html'>👉 點此開啟證交所「全市場概況」官方頁面</a></p>",
+        "<p style='margin-top: 15px;'><a href='https://www.twse.com.tw/dashboard/zh/credit/margin.html'>👉 點此開啟證交所「信用交易—全市場概況」官方頁面</a></p>",
         "</div>"
     ]
     html_body = "\n".join(lines)
