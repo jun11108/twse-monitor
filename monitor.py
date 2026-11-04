@@ -20,6 +20,7 @@ def get_twse_data():
     info = {
         "date": "最新交易日",
         "ratio": None,
+        "ratio_diff": "",
         "mc_acc": "N/A",
         "mc_amt": "N/A",
         "liq_acc": "N/A",
@@ -27,7 +28,6 @@ def get_twse_data():
         "debug_hint": ""
     }
     vis_texts = []
-    json_texts = []
     input_dates = []
 
     try:
@@ -36,67 +36,48 @@ def get_twse_data():
             browser = p.chromium.launch(headless=True)
             context = browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                viewport={"width": 1920, "height": 3000},
+                viewport={"width": 1920, "height": 2400},
                 locale="zh-TW"
             )
             page = context.new_page()
 
-            def handle_res(res):
-                try:
-                    if res.status == 200:
-                        u_low = res.url.lower()
-                        ct = res.headers.get("content-type", "").lower()
-                        if not any(ext in u_low for ext in [".js", ".css", ".png", ".woff", ".svg", ".ico", ".jpg"]):
-                            if "json" in ct or "api" in u_low or "data" in u_low or "credit" in u_low or "margin" in u_low or "lending" in u_low:
-                                t = res.text()
-                                if len(t) < 600000:
-                                    json_texts.append(t)
-                except Exception:
-                    pass
+            page.goto("https://www.twse.com.tw/dashboard/zh/credit/lending.html", wait_until="networkidle", timeout=45000)
+            page.wait_for_timeout(3000)
 
-            page.on("response", handle_res)
-
-            target_urls = [
-                "https://www.twse.com.tw/dashboard/zh/credit/lending.html",
-                "https://www.twse.com.tw/dashboard/zh/credit/margin.html"
-            ]
-
-            for u in target_urls:
-                try:
-                    page.goto(u, wait_until="networkidle", timeout=45000)
-                    page.wait_for_timeout(4000)
-
-                    # 1. 分段往下捲動整個頁面，觸發所有懶載入 (Lazy-load) 圖表與卡片
-                    for scroll_y in [500, 1200, 2000, 3000, 0]:
-                        page.evaluate("window.scrollTo(0, " + str(scroll_y) + ")")
-                        page.wait_for_timeout(800)
-
-                    # 2. 收集當前頁面文字與日期輸入框
-                    vals = page.evaluate("() => Array.from(document.querySelectorAll('input, select')).map(el => el.value).filter(v => v)")
-                    input_dates.extend(vals)
-                    for frame in page.frames:
+            # 關鍵步驟：點擊頁面上方的「全市場」頁籤按鈕 (3個字)
+            try:
+                loc_exact = page.get_by_text("全市場", exact=True)
+                if loc_exact.count() > 0:
+                    for idx in range(loc_exact.count()):
                         try:
-                            vis_texts.append(frame.inner_text("body"))
-                        except Exception:
-                            pass
-
-                    # 3. 無條件嘗試點擊頁面上所有「全市場概況」頁籤或按鈕，點完等待 5 秒再讀一次
-                    loc = page.get_by_text("全市場概況")
-                    cnt = loc.count()
-                    for idx in range(cnt):
-                        try:
-                            loc.nth(idx).click(timeout=2000)
+                            loc_exact.nth(idx).click(timeout=2000)
                             page.wait_for_timeout(4000)
-                            for scroll_y in [500, 1200, 2000]:
-                                page.evaluate("window.scrollTo(0, " + str(scroll_y) + ")")
-                                page.wait_for_timeout(600)
-                            for frame in page.frames:
-                                try:
-                                    vis_texts.append(frame.inner_text("body"))
-                                except Exception:
-                                    pass
                         except Exception:
                             pass
+                else:
+                    loc_any = page.get_by_text("全市場")
+                    if loc_any.count() > 0:
+                        loc_any.first.click(timeout=2000)
+                        page.wait_for_timeout(4000)
+            except Exception:
+                pass
+
+            # 捲動頁面確保所有卡片渲染完畢
+            for scroll_y in [400, 1000, 0]:
+                page.evaluate("window.scrollTo(0, " + str(scroll_y) + ")")
+                page.wait_for_timeout(800)
+
+            # 讀取日期輸入框的值
+            try:
+                vals = page.evaluate("() => Array.from(document.querySelectorAll('input, select')).map(el => el.value).filter(v => v)")
+                input_dates.extend(vals)
+            except Exception:
+                pass
+
+            # 讀取切換到「全市場」後的完整頁面文字
+            for frame in page.frames:
+                try:
+                    vis_texts.append(frame.inner_text("body"))
                 except Exception:
                     pass
 
@@ -105,15 +86,14 @@ def get_twse_data():
         info["debug_hint"] = "Err: " + str(e)[:100]
 
     clean_vis = "\n".join(vis_texts)
-    all_combined = clean_vis + "\n" + "\n".join(json_texts)
-
-    # 紀錄頁面上的關鍵字附近文字供診斷
     compact = re.sub(r"\s+", " ", clean_vis).strip()
-    pos = compact.find("全市場")
+
+    pos = compact.find("全市場擔保維持率")
     if pos != -1:
         info["debug_hint"] = compact[pos:pos + 220]
     else:
-        info["debug_hint"] = compact[:220]
+        pos2 = compact.find("全市場")
+        info["debug_hint"] = compact[pos2:pos2 + 220] if pos2 != -1 else compact[:220]
 
     # 1. 解析資料日期 (排除 2026-08-03 起始日)
     for v in input_dates:
@@ -123,33 +103,36 @@ def get_twse_data():
             break
 
     if info["date"] == "最新交易日":
-        all_d = [d for d in re.findall(r"(202\d[-/]\d{2}[-/]\d{2})", all_combined) if d != "2026-08-03"]
+        all_d = [d for d in re.findall(r"(202\d[-/]\d{2}[-/]\d{2})", compact) if d != "2026-08-03"]
         if all_d:
             info["date"] = sorted(all_d)[-1]
 
-    # 2. 解析全市場擔保維持率 (支援空白、換行或 JSON 數值)
-    rm = re.search(r"全市場擔保維持率.{0,300}?(1[2-9]\d\.\d{1,2})\s*%?", all_combined, re.S)
+    # 2. 解析全市場擔保維持率 (格式如：全市場擔保維持率 i 165.53% ▼ 8.09%)
+    rm = re.search(r"全市場擔保維持率\s*i?\s*(\d{2,3}\.\d{1,2})\s*%", compact)
+    if not rm:
+        rm = re.search(r"全市場擔保維持率.{0,80}?(\d{2,3}\.\d{1,2})\s*%", compact)
     if rm:
         info["ratio"] = float(rm.group(1))
-    else:
-        pcts = re.findall(r"(1[3-9]\d\.\d{2})\s*%", all_combined)
-        if pcts:
-            info["ratio"] = float(pcts[0])
 
-    # 3. 解析追繳戶數、追繳金額、處分戶數、處分金額
-    m1 = re.search(r"追繳戶數.{0,300}?([\d,]+)\s*戶", all_combined, re.S)
+    # 解析維持率單日漲跌 (如 ▼ 8.09% 或 ▲ 1.25%)
+    rd = re.search(r"全市場擔保維持率.{0,40}?\d{2,3}\.\d{1,2}\s*%\s*([▼▲+-]\s*\d+\.\d{1,2}\s*%)", compact)
+    if rd:
+        info["ratio_diff"] = " (" + rd.group(1).strip() + ")"
+
+    # 3. 解析追繳戶數、追繳金額、處分戶數、處分金額 (格式如：追繳戶數 i 1,286 戶)
+    m1 = re.search(r"追繳戶數\s*i?\s*([\d,]+)\s*戶", compact)
     if m1:
         info["mc_acc"] = m1.group(1) + " 戶"
 
-    m2 = re.search(r"追繳金額.{0,300}?([\d,.]+)\s*億元", all_combined, re.S)
+    m2 = re.search(r"追繳金額\s*i?\s*([\d,.]+)\s*億元", compact)
     if m2:
         info["mc_amt"] = m2.group(1) + " 億元"
 
-    m3 = re.search(r"處分戶數.{0,300}?([\d,]+)\s*戶", all_combined, re.S)
+    m3 = re.search(r"處分戶數\s*i?\s*([\d,]+)\s*戶", compact)
     if m3:
         info["liq_acc"] = m3.group(1) + " 戶"
 
-    m4 = re.search(r"處分金額.{0,300}?([\d,.]+)\s*億元", all_combined, re.S)
+    m4 = re.search(r"處分金額\s*i?\s*([\d,.]+)\s*億元", compact)
     if m4:
         info["liq_amt"] = m4.group(1) + " 億元"
 
@@ -223,7 +206,7 @@ def main():
     if not alerts:
         alerts.append("目前維持率與 009816 股價皆未達第 2～4 批加碼門檻，447.5萬未動用額度繼續留在貸款專戶內享 0 利息。")
 
-    r_str = f"{ratio:.2f}%" if ratio is not None else "請點下方官方連結查看"
+    r_str = (f"{ratio:.2f}%" + twse["ratio_diff"]) if ratio is not None else "請點下方官方連結查看"
     r_table_str = f"{ratio:.2f}%" if ratio is not None else "依當日官方數值"
     p_str = f"{p9816:.2f} 元" if p9816 is not None else "N/A"
     v_str = f"${pvoo:.2f} USD" if pvoo is not None else "N/A"
@@ -258,7 +241,7 @@ def main():
         "</div>"
     ]
     html_body = "\n".join(lines)
-    send_mail("【投資監控】" + title + " (維持率: " + r_str + " | 009816: " + p_str + ")", html_body)
+    send_mail("【投資監控】" + title + " (維持率: " + r_table_str + " | 009816: " + p_str + ")", html_body)
 
 
 if __name__ == "__main__":
