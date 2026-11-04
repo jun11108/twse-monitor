@@ -23,83 +23,116 @@ def get_twse_data():
         "mc_acc": "N/A",
         "mc_amt": "N/A",
         "liq_acc": "N/A",
-        "liq_amt": "N/A"
+        "liq_amt": "N/A",
+        "raw_preview": ""
     }
-    texts = []
+    vis_texts = []
+    json_texts = []
+    input_dates = []
+
     try:
         from playwright.sync_api import sync_playwright
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
+            context = browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                viewport={"width": 1920, "height": 1080},
+                locale="zh-TW"
+            )
+            page = context.new_page()
 
             def handle_res(res):
                 try:
                     if res.status == 200:
                         ct = res.headers.get("content-type", "").lower()
-                        if "json" in ct or "api" in res.url.lower() or "credit" in res.url.lower():
-                            t = res.text()
-                            if len(t) < 300000:
-                                texts.append(t)
+                        u_low = res.url.lower()
+                        if "json" in ct or ".json" in u_low or "api" in u_low or "dashboard" in u_low or "rwd" in u_low:
+                            if not any(ext in u_low for ext in [".js", ".css", ".png", ".woff", ".svg"]):
+                                t = res.text()
+                                if len(t) < 500000:
+                                    json_texts.append(t)
                 except Exception:
                     pass
 
             page.on("response", handle_res)
 
-            urls = [
-                "https://www.twse.com.tw/dashboard/zh/credit/lending.html",
-                "https://www.twse.com.tw/dashboard/zh/credit/margin.html"
-            ]
-            for u in urls:
+            # 開啟您指定的網址並等待網路請求完成
+            page.goto("https://www.twse.com.tw/dashboard/zh/credit/lending.html", wait_until="networkidle", timeout=45000)
+            page.wait_for_timeout(6000)
+
+            # 若頁面上有「全市場概況」頁籤且目前尚未顯示「全市場擔保維持率」，只點「全市場概況」一次並等待 6 秒
+            body_now = page.inner_text("body")
+            if "全市場擔保維持率" not in body_now:
                 try:
-                    page.goto(u, timeout=40000)
-                    page.wait_for_timeout(5000)
-                    for kw in ["全市場概況", "擔保維持率", "信用交易"]:
-                        try:
-                            loc = page.get_by_text(kw)
-                            if loc.count() > 0:
-                                loc.first.click(timeout=2000)
-                                page.wait_for_timeout(2000)
-                        except Exception:
-                            pass
-                    for frame in page.frames:
-                        try:
-                            texts.append(frame.inner_text("body"))
-                            texts.append(frame.content())
-                        except Exception:
-                            pass
+                    loc = page.get_by_text("全市場概況")
+                    if loc.count() > 0:
+                        loc.first.click(timeout=3000)
+                        page.wait_for_timeout(6000)
                 except Exception:
                     pass
+
+            # 1. 直接讀取頁面上 <input> 日期框的真實數值 (例如 2026-11-03)
+            try:
+                vals = page.evaluate("() => Array.from(document.querySelectorAll('input, select')).map(el => el.value).filter(v => v)")
+                input_dates.extend(vals)
+            except Exception:
+                pass
+
+            # 2. 讀取所有可見文字 (不包含隱藏 HTML 標籤，避免抓到 min='2026-08-03')
+            for frame in page.frames:
+                try:
+                    t = frame.inner_text("body")
+                    if t:
+                        vis_texts.append(t)
+                except Exception:
+                    pass
+
             browser.close()
-    except Exception:
-        pass
+    except Exception as e:
+        info["raw_preview"] = "Browser note: " + str(e)[:120]
 
-    full_txt = "\n".join(texts)
+    clean_vis = "\n".join(vis_texts)
+    all_combined = clean_vis + "\n" + "\n".join(json_texts)
 
-    dm = re.search(r"(202\d[-/]\d{2}[-/]\d{2})", full_txt)
-    if dm:
-        info["date"] = dm.group(1)
+    # 儲存前 300 字可見文字供檢視
+    compact_vis = re.sub(r"\s+", " ", clean_vis).strip()
+    info["raw_preview"] = compact_vis[:350]
 
-    rm = re.search(r"全市場擔保維持率.*?(1[2-9]\d\.\d{1,2})\s*%", full_txt, re.S)
+    # 1. 解析正確資料日期 (優先取 <input> 的值，且排除 2026-08-03 起始日)
+    for v in input_dates:
+        m_d = re.search(r"(202\d[-/]\d{2}[-/]\d{2})", str(v))
+        if m_d and m_d.group(1) != "2026-08-03":
+            info["date"] = m_d.group(1)
+            break
+
+    if info["date"] == "最新交易日":
+        all_d = [d for d in re.findall(r"(202\d[-/]\d{2}[-/]\d{2})", all_combined) if d != "2026-08-03"]
+        if all_d:
+            info["date"] = sorted(all_d)[-1]
+
+    # 2. 解析全市場擔保維持率 (允許標題與數字中間有 ⓘ 說明文字或換行)
+    rm = re.search(r"全市場擔保維持率.{0,250}?(1[2-9]\d\.\d{1,2})\s*%", clean_vis, re.S)
     if rm:
         info["ratio"] = float(rm.group(1))
     else:
-        pcts = re.findall(r"(1[3-9]\d\.\d{2})\s*%", full_txt)
+        pcts = re.findall(r"(1[3-9]\d\.\d{1,2})\s*%", all_combined)
         if pcts:
             info["ratio"] = float(pcts[0])
 
-    m1 = re.search(r"追繳戶數[^\d]{0,30}([\d,]+)\s*戶", full_txt, re.S)
+    # 3. 解析追繳戶數、追繳金額、處分戶數、處分金額 (允許中間有 ⓘ 說明文字)
+    m1 = re.search(r"追繳戶數.{0,250}?([\d,]+)\s*戶", clean_vis, re.S)
     if m1:
         info["mc_acc"] = m1.group(1) + " 戶"
 
-    m2 = re.search(r"追繳金額[^\d]{0,30}([\d,.]+)\s*億元", full_txt, re.S)
+    m2 = re.search(r"追繳金額.{0,250}?([\d,.]+)\s*億元", clean_vis, re.S)
     if m2:
         info["mc_amt"] = m2.group(1) + " 億元"
 
-    m3 = re.search(r"處分戶數[^\d]{0,30}([\d,]+)\s*戶", full_txt, re.S)
+    m3 = re.search(r"處分戶數.{0,250}?([\d,]+)\s*戶", clean_vis, re.S)
     if m3:
         info["liq_acc"] = m3.group(1) + " 戶"
 
-    m4 = re.search(r"處分金額[^\d]{0,30}([\d,.]+)\s*億元", full_txt, re.S)
+    m4 = re.search(r"處分金額.{0,250}?([\d,.]+)\s*億元", clean_vis, re.S)
     if m4:
         info["liq_amt"] = m4.group(1) + " 億元"
 
@@ -126,7 +159,6 @@ def send_mail(subject, html_body):
     password = os.environ.get("GMAIL_APP_PASSWORD", "").replace(" ", "").strip()
     recipient = os.environ.get("NOTIFY_EMAIL", sender).strip()
     if not sender or not password:
-        print("Missing GMAIL credentials")
         return
 
     msg = MIMEMultipart("alternative")
@@ -203,11 +235,11 @@ def main():
         "<tr><td><b>第 4 批 (25%)</b></td><td>106.25 萬</td><td><b>&le; 11.63 元</b> (-22.0% / 約 73.1 張)</td><td><b>&le; 142%~145%</b> (斷頭谷底)</td><td>85萬 009816 ＋ 21.25萬 VOO</td></tr>",
         "</table>",
         "<p style='margin-top: 15px;'><a href='https://www.twse.com.tw/dashboard/zh/credit/lending.html'>👉 點此開啟證交所「全市場概況」官方頁面</a></p>",
+        "<p style='font-size:11px; color:#888;'>網頁擷取摘要：" + twse["raw_preview"] + "</p>",
         "</div>"
     ]
     html_body = "\n".join(lines)
-    send_mail("【投資監控】" + title + " (009816: " + p_str + ")", html_body)
-    print("Email sent successfully!")
+    send_mail("【投資監控】" + title + " (維持率: " + r_str + " | 009816: " + p_str + ")", html_body)
 
 
 if __name__ == "__main__":
