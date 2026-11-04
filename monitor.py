@@ -5,15 +5,17 @@ import traceback
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-BATCH_1_PRICE = 14.91
-PRICE_B2 = 13.79
-PRICE_B3 = 12.67
-PRICE_B4 = 11.63
+# ================= 經美韓跌幅與歷史MDD校準後之黃金參數 =================
+BATCH_1_PRICE = 14.91   # 11/5 首批買進後可更新為您的實際成交均價
+PRICE_B2 = 14.16        # 較基準價再跌 -5.0% (對應大盤距5萬高點總跌幅 -20.4%，對齊費半跌幅)
+PRICE_B3 = 13.34        # 較基準價再跌 -10.5% (對應大盤距5萬高點總跌幅 -25.0%，對齊韓股跌幅)
+PRICE_B4 = 12.45        # 較基準價再跌 -16.5% (對應大盤距5萬高點總跌幅 -30.0%，十年大熊市底)
 
-CHIP_B2 = 158.0
-CHIP_B3 = 150.0
-CHIP_B4 = 145.0
-CHIP_RIGHT = 175.0
+CHIP_B2 = 160.0         # 第 2 批證交所維持率 <= 160.0% (相當於CM估 ~137%)
+CHIP_B3 = 155.0         # 第 3 批證交所維持率 <= 155.0% (相當於CM估 ~132%)
+CHIP_B4 = 150.0         # 第 4 批證交所維持率 <= 150.0% (相當於CM估 ~127%)
+CHIP_RIGHT = 173.0      # 右側選後多頭回穩確認線 >= 173.0%
+# =====================================================================
 
 
 def get_twse_data():
@@ -24,8 +26,7 @@ def get_twse_data():
         "mc_acc": "N/A",
         "mc_amt": "N/A",
         "liq_acc": "N/A",
-        "liq_amt": "N/A",
-        "debug_hint": ""
+        "liq_amt": "N/A"
     }
     vis_texts = []
     input_dates = []
@@ -41,15 +42,12 @@ def get_twse_data():
             )
             page = context.new_page()
 
-            # 1. 直接開啟「信用交易 (margin.html)」（此頁面才有「全市場」頁籤）
             page.goto("https://www.twse.com.tw/dashboard/zh/credit/margin.html", wait_until="networkidle", timeout=45000)
             page.wait_for_timeout(4000)
 
-            # 2. 點擊頁面上方的「全市場」頁籤按鈕 (3個字)
             try:
                 loc_exact = page.get_by_text("全市場", exact=True)
-                cnt = loc_exact.count()
-                for idx in range(cnt):
+                for idx in range(loc_exact.count()):
                     try:
                         loc_exact.nth(idx).click(timeout=2000)
                         page.wait_for_timeout(5000)
@@ -58,33 +56,16 @@ def get_twse_data():
             except Exception:
                 pass
 
-            # 3. 備援：透過 JavaScript 直接尋找文字為「全市場」的按鈕/頁籤並觸發 click()
-            try:
-                page.evaluate("""() => {
-                    const els = Array.from(document.querySelectorAll('button, a, li, div, span'));
-                    els.forEach(el => {
-                        if (el.innerText && el.innerText.trim() === '全市場') {
-                            el.click();
-                        }
-                    });
-                }""")
-                page.wait_for_timeout(5000)
-            except Exception:
-                pass
-
-            # 4. 捲動頁面確保所有卡片渲染完畢
             for scroll_y in [400, 900, 0]:
                 page.evaluate("window.scrollTo(0, " + str(scroll_y) + ")")
                 page.wait_for_timeout(800)
 
-            # 5. 讀取日期輸入框的值
             try:
                 vals = page.evaluate("() => Array.from(document.querySelectorAll('input, select')).map(el => el.value).filter(v => v)")
                 input_dates.extend(vals)
             except Exception:
                 pass
 
-            # 6. 讀取切換到「全市場」後的完整頁面文字
             for frame in page.frames:
                 try:
                     vis_texts.append(frame.inner_text("body"))
@@ -92,20 +73,12 @@ def get_twse_data():
                     pass
 
             browser.close()
-    except Exception as e:
-        info["debug_hint"] = "Err: " + str(e)[:100]
+    except Exception:
+        pass
 
     clean_vis = "\n".join(vis_texts)
     compact = re.sub(r"\s+", " ", clean_vis).strip()
 
-    pos = compact.find("全市場擔保維持率")
-    if pos != -1:
-        info["debug_hint"] = compact[pos:pos + 250]
-    else:
-        pos2 = compact.find("全市場")
-        info["debug_hint"] = compact[pos2:pos2 + 250] if pos2 != -1 else compact[:250]
-
-    # 1. 解析資料日期 (排除 2026-08-03 起始日)
     for v in input_dates:
         m_d = re.search(r"(202\d[-/]\d{2}[-/]\d{2})", str(v))
         if m_d and m_d.group(1) != "2026-08-03":
@@ -117,19 +90,16 @@ def get_twse_data():
         if all_d:
             info["date"] = sorted(all_d)[-1]
 
-    # 2. 解析全市場擔保維持率 (格式如：全市場擔保維持率 i 165.53% ▼ 8.09%)
     rm = re.search(r"全市場擔保維持率\s*i?\s*(\d{2,3}\.\d{1,2})\s*%", compact)
     if not rm:
         rm = re.search(r"全市場擔保維持率.{0,80}?(\d{2,3}\.\d{1,2})\s*%", compact)
     if rm:
         info["ratio"] = float(rm.group(1))
 
-    # 解析維持率單日漲跌 (如 ▼ 8.09% 或 ▲ 1.25%)
     rd = re.search(r"全市場擔保維持率.{0,40}?\d{2,3}\.\d{1,2}\s*%\s*([▼▲+-]\s*\d+\.\d{1,2}\s*%)", compact)
     if rd:
         info["ratio_diff"] = " (" + rd.group(1).strip() + ")"
 
-    # 3. 解析追繳戶數、追繳金額、處分戶數、處分金額 (格式如：追繳戶數 i 1,286 戶)
     m1 = re.search(r"追繳戶數\s*i?\s*([\d,]+)\s*戶", compact)
     if m1:
         info["mc_acc"] = m1.group(1) + " 戶"
@@ -192,26 +162,26 @@ def main():
 
     if ratio is not None:
         if ratio <= CHIP_B4:
-            title = "🚨【終極抄底警報】維持率 " + f"{ratio:.2f}%" + " 觸發第 4 批 (106.25萬)"
-            alerts.append("🔥 全市場擔保維持率跌至 <b>" + f"{ratio:.2f}%" + "</b> (&le; 145%)！請提領第 4 批 106.25 萬元（85萬 009816 + 21.25萬 VOO）。")
+            title = "🚨【終極抄底警報】維持率 " + f"{ratio:.2f}%" + " 觸發第 4 批 (85萬)"
+            alerts.append("🔥 全市場擔保維持率跌至 <b>" + f"{ratio:.2f}%" + "</b> (&le; 150%)！請提領第 4 批 85 萬元（68萬 009816 + 17萬 VOO）。")
         elif ratio <= CHIP_B3:
             title = "⚠️【恐慌加碼警報】維持率 " + f"{ratio:.2f}%" + " 觸發第 3 批 (106.25萬)"
-            alerts.append("🔥 全市場擔保維持率跌至 <b>" + f"{ratio:.2f}%" + "</b> (&le; 150%)！請提領第 3 批 106.25 萬元（85萬 009816 + 21.25萬 VOO）。")
+            alerts.append("🔥 全市場擔保維持率跌至 <b>" + f"{ratio:.2f}%" + "</b> (&le; 155%)！請提領第 3 批 106.25 萬元（85萬 009816 + 21.25萬 VOO）。")
         elif ratio <= CHIP_B2:
-            title = "📢【防禦加碼警報】維持率 " + f"{ratio:.2f}%" + " 觸發第 2 批 (85萬)"
-            alerts.append("⚡ 全市場擔保維持率跌至 <b>" + f"{ratio:.2f}%" + "</b> (&le; 158%)！請提領第 2 批 85 萬元（68萬 009816 + 17萬 VOO）。")
+            title = "📢【防禦加碼警報】維持率 " + f"{ratio:.2f}%" + " 觸發第 2 批 (106.25萬)"
+            alerts.append("⚡ 全市場擔保維持率跌至 <b>" + f"{ratio:.2f}%" + "</b> (&le; 160%)！請提領第 2 批 106.25 萬元（85萬 009816 + 21.25萬 VOO）。")
         elif ratio >= CHIP_RIGHT:
-            alerts.append("📈 全市場擔保維持率回升至 <b>" + f"{ratio:.2f}%" + "</b> (&ge; 175%)，若第 2 批未進場且站上月線可執行右側補倉。")
+            alerts.append("📈 全市場擔保維持率回升至 <b>" + f"{ratio:.2f}%" + "</b> (&ge; 173%)，若第 2 批未進場且站上月線可執行右側補倉。")
 
     if p9816 is not None:
         drop = (p9816 - BATCH_1_PRICE) / BATCH_1_PRICE * 100
         if p9816 <= PRICE_B4:
             title = "🚨【股價抄底警報】009816 跌至 " + f"{p9816:.2f}" + " 元！觸發第 4 批"
-            alerts.append("📉 009816 收盤 <b>" + f"{p9816:.2f}" + " 元</b> (" + f"{drop:+.2f}%" + ")，已達第 4 批目標價 11.63 元！應買約 73.1 張。")
+            alerts.append("📉 009816 收盤 <b>" + f"{p9816:.2f}" + " 元</b> (" + f"{drop:+.2f}%" + ")，已達第 4 批目標價 12.45 元！應買約 54.6 張。")
         elif p9816 <= PRICE_B3:
-            alerts.append("📉 009816 收盤 <b>" + f"{p9816:.2f}" + " 元</b> (" + f"{drop:+.2f}%" + ")，已達第 3 批目標價 12.67 元！應買約 67.1 張。")
+            alerts.append("📉 009816 收盤 <b>" + f"{p9816:.2f}" + " 元</b> (" + f"{drop:+.2f}%" + ")，已達第 3 批目標價 13.34 元！應買約 63.7 張。")
         elif p9816 <= PRICE_B2:
-            alerts.append("📉 009816 收盤 <b>" + f"{p9816:.2f}" + " 元</b> (" + f"{drop:+.2f}%" + ")，已達第 2 批目標價 13.79 元！應買約 49.3 張。")
+            alerts.append("📉 009816 收盤 <b>" + f"{p9816:.2f}" + " 元</b> (" + f"{drop:+.2f}%" + ")，已達第 2 批目標價 14.16 元！應買約 60.0 張。")
 
     if not alerts:
         alerts.append("目前維持率與 009816 股價皆未達第 2～4 批加碼門檻，447.5萬未動用額度繼續留在貸款專戶內享 0 利息。")
@@ -223,7 +193,6 @@ def main():
     d_str = f"{(p9816 - BATCH_1_PRICE) / BATCH_1_PRICE * 100:+.2f}%" if p9816 is not None else "0.00%"
 
     li_html = "".join(["<li style='margin-bottom:8px;'>" + a + "</li>" for a in alerts])
-    diag_line = ("<br><span style='font-size:12px; color:#888;'>[頁面內容診斷]：" + twse["debug_hint"] + "</span>") if ratio is None else ""
 
     lines = [
         "<div style='font-family: Microsoft JhengHei, sans-serif; line-height: 1.6; color: #222;'>",
@@ -235,17 +204,16 @@ def main():
         "<b>當日處分(斷頭)戶數／金額</b>：" + twse["liq_acc"] + " ／ " + twse["liq_amt"] + "<br>",
         "<b>009816 (凱基50) 最新收盤價</b>：<span style='font-size:18px; color:#0275d8;'><b>" + p_str + "</b></span>（較首批基準價 14.91 元漲跌：<b>" + d_str + "</b>）<br>",
         "<b>VOO 最新收盤價</b>：" + v_str,
-        diag_line,
         "</p><hr>",
         "<h3>" + title + "</h3>",
         "<ul>" + li_html + "</ul><hr>",
-        "<h4>🎯 您的四階段進場目標對照表（以首批基準價 14.91 元精算）</h4>",
-        "<table border='1' cellpadding='8' cellspacing='0' style='border-collapse: collapse; width: 100%; max-width: 700px; font-size: 14px;'>",
-        "<tr style='background-color: #f2f2f2; text-align: left;'><th>批次</th><th>動用總額</th><th>009816 真實觸發價 (應買張數)</th><th>全市場維持率觸發</th><th>買進配置 (80% / 20%)</th></tr>",
+        "<h4>🎯 您的四階段進場目標對照表（經美韓跌幅與歷史MDD校準版）</h4>",
+        "<table border='1' cellpadding='8' cellspacing='0' style='border-collapse: collapse; width: 100%; max-width: 720px; font-size: 14px;'>",
+        "<tr style='background-color: #f2f2f2; text-align: left;'><th>批次 (比例)</th><th>動用總額</th><th>009816 觸發價 (應買張數)</th><th>全市場維持率觸發</th><th>買進配置 (80% / 20%)</th></tr>",
         "<tr><td><b>第 1 批 (30%)</b></td><td>127.5 萬</td><td><b>14.91 元</b> (約 68.4 張)</td><td>11/5 撥款立即進場 (目前 " + r_table_str + ")</td><td>102萬 009816 ＋ 25.5萬 VOO</td></tr>",
-        "<tr><td><b>第 2 批 (20%)</b></td><td>85.0 萬</td><td><b>&le; 13.79 元</b> (-7.5% / 約 49.3 張)</td><td><b>&le; 158%</b> (或回升&ge;175%)</td><td>68萬 009816 ＋ 17.0萬 VOO</td></tr>",
-        "<tr><td><b>第 3 批 (25%)</b></td><td>106.25 萬</td><td><b>&le; 12.67 元</b> (-15.0% / 約 67.1 張)</td><td><b>&le; 150%</b> (或處分>5億)</td><td>85萬 009816 ＋ 21.25萬 VOO</td></tr>",
-        "<tr><td><b>第 4 批 (25%)</b></td><td>106.25 萬</td><td><b>&le; 11.63 元</b> (-22.0% / 約 73.1 張)</td><td><b>&le; 142%~145%</b> (斷頭谷底)</td><td>85萬 009816 ＋ 21.25萬 VOO</td></tr>",
+        "<tr><td><b>第 2 批 (25%)</b></td><td>106.25 萬</td><td><b>&le; 14.16 元</b> (-5.0% / 約 60.0 張)</td><td><b>&le; 160%</b> (或回升&ge;173%)</td><td>85萬 009816 ＋ 21.25萬 VOO</td></tr>",
+        "<tr><td><b>第 3 批 (25%)</b></td><td>106.25 萬</td><td><b>&le; 13.34 元</b> (-10.5% / 約 63.7 張)</td><td><b>&le; 155%</b> (或處分>3.5億)</td><td>85萬 009816 ＋ 21.25萬 VOO</td></tr>",
+        "<tr><td><b>第 4 批 (20%)</b></td><td>85.0 萬</td><td><b>&le; 12.45 元</b> (-16.5% / 約 54.6 張)</td><td><b>&le; 150%</b> (十年大熊市底)</td><td>68萬 009816 ＋ 17.0萬 VOO</td></tr>",
         "</table>",
         "<p style='margin-top: 15px;'><a href='https://www.twse.com.tw/dashboard/zh/credit/margin.html'>👉 點此開啟證交所「信用交易—全市場概況」官方頁面</a></p>",
         "</div>"
