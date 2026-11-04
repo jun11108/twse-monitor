@@ -1,0 +1,31 @@
+name: TWSE Margin Ratio Daily Monitor
+
+on:
+  schedule:
+    # UTC 13:30 = 台灣時間晚上 21:30 (每週一至週五自動執行)
+    - cron: '30 13 * * 1-5'
+  workflow_dispatch: # 開啟手動一鍵測試按鈕
+
+jobs:
+  check_margin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies & Playwright
+        run: |
+          pip install playwright yfinance
+          playwright install --with-deps chromium
+
+      - name: Run Monitor & Send Email
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          NOTIFY_EMAIL: "junn11108@gmail.com"
+        run: python monitor.py
