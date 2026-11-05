@@ -1,0 +1,145 @@
+{
+  "updated_at": "2026-11-05 15:34",
+  "data_date": "2026-11-04",
+  "verdict": {
+    "badge": "WATCH",
+    "headline": "🟢 晨間盤前報告：籌碼與股價穩定（今日無須動用增貸）",
+    "do_now": "台股 L1 (15%) 已建倉完成；目前台美指標皆未達下一層加碼門檻，未動用額度繼續享 0 利息。",
+    "watch_next": "維持率距 L2 (160%) 尚有 +7.42% ｜ 009816 距 L2 (14.05元) 尚有 -3.30% ｜ VOO 距方案A ($695.0) 尚有 -1.39%"
+  },
+  "metrics": {
+    "twse_ratio": 167.42,
+    "twse_ratio_diff": "▲ 1.89%",
+    "mc_acc": "840 戶",
+    "mc_amt": "3.01 億元",
+    "liq_acc": "14 戶",
+    "liq_amt": "0.08 億元",
+    "p9816": 14.53,
+    "p9816_base": 14.91,
+    "p9816_change_pct": -2.55,
+    "pvoo": 704.78,
+    "pvoo_base": 693.54,
+    "pvoo_change_pct": 1.62,
+    "vix": 16.61,
+    "usd_twd": 32.94
+  },
+  "capital_gauge": {
+    "active_invest_pct": 12.0,
+    "half_year_cap_pct": 50.0,
+    "year_one_cond_cap_pct": 75.0,
+    "sealed_reserve_pct": 25.0,
+    "interest_coverage_current": "20.8x",
+    "interest_coverage_stress": "2.54x"
+  },
+  "tw_tiers": [
+    {
+      "tier": "L1 首倉",
+      "weight": "15%",
+      "done": true,
+      "chip_target": "撥款即買",
+      "price_target": 14.91,
+      "note": "0.382回撤位 (已建倉完成)"
+    },
+    {
+      "tier": "L2 半山腰",
+      "weight": "15%",
+      "done": false,
+      "chip_target": "<=160%",
+      "price_target": 14.05,
+      "note": "0.500回撤位 或 >=173%右側補倉"
+    },
+    {
+      "tier": "L3 半年上限",
+      "weight": "20%",
+      "done": false,
+      "chip_target": "<=155%",
+      "price_target": 13.3,
+      "note": "★前半年上限 (0.618+年線共振)"
+    },
+    {
+      "tier": "L4 條件上限",
+      "weight": "25%",
+      "done": false,
+      "chip_target": "<=150%",
+      "price_target": 12.45,
+      "note": "★第一年條件上限 (須過利率/現金流審查)"
+    },
+    {
+      "tier": "L5 常態封印",
+      "weight": "25%",
+      "done": false,
+      "chip_target": "<=145%",
+      "price_target": 11.56,
+      "note": "🔒常態封印 (保留免息彈性)"
+    }
+  ],
+  "us_tiers": [
+    {
+      "tier": "L1 方案A",
+      "weight": "15%",
+      "done": false,
+      "vix_target": "台幣<=32.6",
+      "price_target": 695.0,
+      "note": "方案A待命 (等回測<=$695或台幣升值)"
+    },
+    {
+      "tier": "L2 波動層",
+      "weight": "15%",
+      "done": false,
+      "vix_target": "VIX>=25",
+      "price_target": 658.8,
+      "note": "VOO -5.0% 回測季線"
+    },
+    {
+      "tier": "L3 半年上限",
+      "weight": "20%",
+      "done": false,
+      "vix_target": "VIX>=30",
+      "price_target": 624.2,
+      "note": "★前半年上限 (VOO -10% 測年線)"
+    },
+    {
+      "tier": "L4 條件上限",
+      "weight": "25%",
+      "done": false,
+      "vix_target": "VIX>=35",
+      "price_target": 589.5,
+      "note": "★第一年條件上限 (VOO -15%)"
+    },
+    {
+      "tier": "L5 常態封印",
+      "weight": "25%",
+      "done": false,
+      "vix_target": "VIX>=40",
+      "price_target": 554.8,
+      "note": "🔒常態封印 (VOO -20% 技術熊市)"
+    }
+  ],
+  "checks": [
+    {
+      "passed": true,
+      "label": "第0層雙重流動性防線",
+      "detail": "自有活存預備金 100% 隔離未動用 ＋ 常態封印免息安全墊完好"
+    },
+    {
+      "passed": true,
+      "label": "前半年 50% 流量上限檢核",
+      "detail": "目前總動用進度 12.0% (低於前 6 個月 50% 硬性上限)"
+    },
+    {
+      "passed": true,
+      "label": "利率停火線檢核 (< 4.0%)",
+      "detail": "目前合約利率 3.05%，遠低於 4.00% 停火線與 4.50% 減債線"
+    },
+    {
+      "passed": true,
+      "label": "外資匯率安全濾網 (< 33.10)",
+      "detail": "目前 USD/TWD 為 32.94，未觸及 33.10 失控貶值線"
+    },
+    {
+      "passed": true,
+      "label": "帳面回撤 -15% 冷靜期檢核",
+      "detail": "目前 009816 較基準價漲跌 -2.55%，未觸發 -15% 強制冷靜期"
+    }
+  ]
+}
