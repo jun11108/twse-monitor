@@ -30,7 +30,7 @@ jobs:
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-          NOTIFY_EMAIL: "jun11108@cht.com.tw"
+          NOTIFY_EMAIL: "junn11108@gmail.com"
         run: python monitor.py
 
       - name: Auto-Commit latest.json for Web Dashboard
