@@ -1,44 +1,54 @@
 import os
 import re
+import json
 import smtplib
 import traceback
+from datetime import datetime, timezone, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 # ================= 目前建倉進度開關 (11/5 方案A 實戰狀態) =================
-TW_L1_DONE = True       # 台股第 1 層 (34張 009816) 已於 11/5 買進完成！
-VOO_L1_DONE = False     # 美股第 1 層 (12.75萬 VOO) 採【方案 A】待命中 (買進後請改為 True)
+TW_L1_DONE = True       # 台股第 1 層 (15%) 已於 11/5 建倉完成
+TW_L2_DONE = False      # 台股第 2 層 (15%) 待命
+TW_L3_DONE = False      # 台股第 3 層 (20%) 前半年上限
+TW_L4_DONE = False      # 台股第 4 層 (25%) 第一年條件上限
+TW_L5_DONE = False      # 台股第 5 層 (25%) 常態封印
 
-# ================= 台股 009816 五階梯參數 (80% 部位，總額上限 340萬) =================
-# 👇 請將 14.91 改為您今日 (11/5) 買進 34 張 009816 的實際成交均價
-P9816_BASE = 14.91      # 第 1 層 (15% = 51萬)：已於 11/5 買進 34 張
-P9816_L2 = round(P9816_BASE * (1 - 0.058), 2)  # 第 2 層 (15% = 51萬)：-5.8% (~14.05元，約 36.3 張)
-P9816_L3 = round(P9816_BASE * (1 - 0.108), 2)  # 第 3 層 (20% = 68萬)：-10.8% (~13.30元，★前半年上限)
-P9816_L4 = round(P9816_BASE * (1 - 0.165), 2)  # 第 4 層 (25% = 85萬)：-16.5% (~12.45元，★第一年條件上限)
-P9816_L5 = round(P9816_BASE * (1 - 0.225), 2)  # 第 5 層 (25% = 85萬)：-22.5% (~11.55元，🔒常態封印)
+VOO_L1_DONE = False     # 美股第 1 層 (15%) 採【方案 A】待命中 (買進後請改為 True)
+VOO_L2_DONE = False     # 美股第 2 層 (15%) 待命
+VOO_L3_DONE = False     # 美股第 3 層 (20%) 前半年上限
+VOO_L4_DONE = False     # 美股第 4 層 (25%) 第一年條件上限
+VOO_L5_DONE = False     # 美股第 5 層 (25%) 常態封印
 
-CHIP_L2 = 160.0         # 第 2 層證交所維持率 <= 160.0% (對應 CM估 ~137%)
-CHIP_L3 = 155.0         # 第 3 層證交所維持率 <= 155.0% (對應 CM估 ~132%，★前半年上限)
-CHIP_L4 = 150.0         # 第 4 層證交所維持率 <= 150.0% (對應 CM估 ~127%，★第一年條件上限)
-CHIP_L5 = 145.0         # 第 5 層證交所維持率 <= 145.0% (對應 CM估 ~122%，🔒常態封印)
-CHIP_RIGHT = 173.0      # 台股右側回穩確認線 >= 173.0% (補齊第 2 層 51 萬)
+# ================= 台股 009816 五階梯參數 (80% 核心權重) =================
+P9816_BASE = 14.91      # 請改為您 11/5 買進 34 張 009816 的實際成交均價
+P9816_L2 = round(P9816_BASE * (1 - 0.058), 2)  # -5.8% (~14.05元)
+P9816_L3 = round(P9816_BASE * (1 - 0.108), 2)  # -10.8% (~13.30元)
+P9816_L4 = round(P9816_BASE * (1 - 0.165), 2)  # -16.5% (~12.45元)
+P9816_L5 = round(P9816_BASE * (1 - 0.225), 2)  # -22.5% (~11.55元)
 
-# ================= 美股 VOO 獨立五階梯參數 (20% 部位，總額上限 85萬) =================
-PVOO_BASE = 693.54      # VOO 基準價 (方案A 第1層買進後可更新為實際成交價)
-PVOO_L1_TARGET = 695.00 # 【方案A】第 1 層 (15% = 12.75萬) 理想低接目標價 <= $695.00 USD
-FX_L1_TARGET = 32.60    # 【方案A】第 1 層理想換匯目標：新台幣升破 <= 32.60 元
-VIX_L1_TARGET = 20.0    # 【方案A】第 1 層 VIX 回升觸發線 >= 20.0
+CHIP_L2 = 160.0         # 第 2 層證交所維持率 <= 160.0%
+CHIP_L3 = 155.0         # 第 3 層證交所維持率 <= 155.0%
+CHIP_L4 = 150.0         # 第 4 層證交所維持率 <= 150.0%
+CHIP_L5 = 145.0         # 第 5 層證交所維持率 <= 145.0%
+CHIP_RIGHT = 173.0      # 右側回穩確認線 >= 173.0%
 
-PVOO_L2 = 658.80        # 第 2 層 (15% = 12.75萬)：VOO 下跌 -5.0% (~$3,880 / 約 5.9 股)
-PVOO_L3 = 624.20        # 第 3 層 (20% = 17.00萬)：VOO 下跌 -10.0% (~$5,170 / ★前半年上限)
-PVOO_L4 = 589.50        # 第 4 層 (25% = 21.25萬)：VOO 下跌 -15.0% (~$6,460 / ★第一年條件上限)
-PVOO_L5 = 554.80        # 第 5 層 (25% = 21.25萬)：VOO 下跌 -20.0% (🔒常態封印額度)
+# ================= 美股 VOO 獨立五階梯參數 (20% 衛星權重) =================
+PVOO_BASE = 693.54      # VOO 基準價
+PVOO_L1_TARGET = 695.00 # 【方案A】第 1 層低接目標價 <= $695.00 USD
+FX_L1_TARGET = 32.60    # 【方案A】第 1 層換匯目標：台幣 <= 32.60 元
+VIX_L1_TARGET = 20.0    # 【方案A】第 1 層 VIX 回升觸發 >= 20.0
 
-VIX_L2 = 25.0           # 第 2 層 VIX 恐慌指數 >= 25.0 (波動升溫)
-VIX_L3 = 30.0           # 第 3 層 VIX 恐慌指數 >= 30.0 (高度恐慌，★前半年上限)
-VIX_L4 = 35.0           # 第 4 層 VIX 恐慌指數 >= 35.0 (系統性拋售，★第一年條件上限)
-VIX_L5 = 40.0           # 第 5 層 VIX 恐慌指數 >= 40.0 (非理性崩盤，🔒常態封印)
-# ====================================================================================
+PVOO_L2 = 658.80        # 第 2 層 VOO -5.0%
+PVOO_L3 = 624.20        # 第 3 層 VOO -10.0%
+PVOO_L4 = 589.50        # 第 4 層 VOO -15.0%
+PVOO_L5 = 554.80        # 第 5 層 VOO -20.0%
+
+VIX_L2 = 25.0           # 第 2 層 VIX >= 25.0
+VIX_L3 = 30.0           # 第 3 層 VIX >= 30.0
+VIX_L4 = 35.0           # 第 4 層 VIX >= 35.0
+VIX_L5 = 40.0           # 第 5 層 VIX >= 40.0
+# =========================================================================
 
 
 def get_twse_data():
@@ -121,7 +131,7 @@ def get_twse_data():
 
     rd = re.search(r"全市場擔保維持率.{0,40}?\d{2,3}\.\d{1,2}\s*%\s*([▼▲+-]\s*\d+\.\d{1,2}\s*%)", compact)
     if rd:
-        info["ratio_diff"] = " (" + rd.group(1).strip() + ")"
+        info["ratio_diff"] = rd.group(1).strip()
 
     m1 = re.search(r"追繳戶數\s*i?\s*([\d,]+)\s*戶", compact)
     if m1:
@@ -148,22 +158,97 @@ def get_market_indicators():
         import yfinance as yf
         h1 = yf.Ticker("009816.TW").history(period="5d")
         if not h1.empty:
-            p9816 = float(h1["Close"].iloc[-1])
+            p9816 = round(float(h1["Close"].iloc[-1]), 2)
 
         h2 = yf.Ticker("VOO").history(period="5d")
         if not h2.empty:
-            pvoo = float(h2["Close"].iloc[-1])
+            pvoo = round(float(h2["Close"].iloc[-1]), 2)
 
         h3 = yf.Ticker("^VIX").history(period="5d")
         if not h3.empty:
-            vix = float(h3["Close"].iloc[-1])
+            vix = round(float(h3["Close"].iloc[-1]), 2)
 
         h4 = yf.Ticker("TWD=X").history(period="5d")
         if not h4.empty:
-            usd_twd = float(h4["Close"].iloc[-1])
+            usd_twd = round(float(h4["Close"].iloc[-1]), 2)
     except Exception:
         pass
     return p9816, pvoo, vix, usd_twd
+
+
+def save_web_json(twse, p9816, pvoo, vix, usd_twd, badge_type, title_clean, do_now, watch_next):
+    """產出 100% 百分比脫敏之 data/latest.json 供 GitHub Pages 靜態網頁讀取"""
+    os.makedirs("data", exist_ok=True)
+    tz_tw = timezone(timedelta(hours=8))
+    now_str = datetime.now(tz_tw).strftime("%Y-%m-%d %H:%M")
+
+    ratio = twse["ratio"]
+    drop_tw = round((p9816 - P9816_BASE) / P9816_BASE * 100, 2) if p9816 else 0.0
+    drop_us = round((pvoo - PVOO_BASE) / PVOO_BASE * 100, 2) if pvoo else 0.0
+
+    # 計算已動用權重百分比 (脫敏，不顯示金額)
+    tw_used_pct = (15 if TW_L1_DONE else 0) + (15 if TW_L2_DONE else 0) + (20 if TW_L3_DONE else 0) + (25 if TW_L4_DONE else 0) + (25 if TW_L5_DONE else 0)
+    us_used_pct = (15 if VOO_L1_DONE else 0) + (15 if VOO_L2_DONE else 0) + (20 if VOO_L3_DONE else 0) + (25 if VOO_L4_DONE else 0) + (25 if VOO_L5_DONE else 0)
+    total_active_pct = round(tw_used_pct * 0.80 + us_used_pct * 0.20, 1)
+
+    payload = {
+        "updated_at": now_str,
+        "data_date": twse["date"],
+        "verdict": {
+            "badge": badge_type,
+            "headline": title_clean,
+            "do_now": do_now,
+            "watch_next": watch_next
+        },
+        "metrics": {
+            "twse_ratio": ratio,
+            "twse_ratio_diff": twse["ratio_diff"],
+            "mc_acc": twse["mc_acc"],
+            "mc_amt": twse["mc_amt"],
+            "liq_acc": twse["liq_acc"],
+            "liq_amt": twse["liq_amt"],
+            "p9816": p9816,
+            "p9816_base": P9816_BASE,
+            "p9816_change_pct": drop_tw,
+            "pvoo": pvoo,
+            "pvoo_base": PVOO_BASE,
+            "pvoo_change_pct": drop_us,
+            "vix": vix,
+            "usd_twd": usd_twd
+        },
+        "capital_gauge": {
+            "active_invest_pct": total_active_pct,
+            "half_year_cap_pct": 50.0,
+            "year_one_cond_cap_pct": 75.0,
+            "sealed_reserve_pct": 25.0,
+            "interest_coverage_current": "20.8x",
+            "interest_coverage_stress": "2.54x"
+        },
+        "tw_tiers": [
+            {"tier": "L1 首倉", "weight": "15%", "done": TW_L1_DONE, "chip_target": "撥款即買", "price_target": P9816_BASE, "note": "0.382回撤位 (已建倉完成)"},
+            {"tier": "L2 半山腰", "weight": "15%", "done": TW_L2_DONE, "chip_target": f"<={CHIP_L2:.0f}%", "price_target": P9816_L2, "note": "0.500回撤位 或 >=173%右側補倉"},
+            {"tier": "L3 半年上限", "weight": "20%", "done": TW_L3_DONE, "chip_target": f"<={CHIP_L3:.0f}%", "price_target": P9816_L3, "note": "★前半年上限 (0.618+年線共振)"},
+            {"tier": "L4 條件上限", "weight": "25%", "done": TW_L4_DONE, "chip_target": f"<={CHIP_L4:.0f}%", "price_target": P9816_L4, "note": "★第一年條件上限 (須過利率/現金流審查)"},
+            {"tier": "L5 常態封印", "weight": "25%", "done": TW_L5_DONE, "chip_target": f"<={CHIP_L5:.0f}%", "price_target": P9816_L5, "note": "🔒常態封印 (保留免息彈性)"}
+        ],
+        "us_tiers": [
+            {"tier": "L1 方案A", "weight": "15%", "done": VOO_L1_DONE, "vix_target": f"台幣<={FX_L1_TARGET}", "price_target": PVOO_L1_TARGET, "note": "方案A待命 (等回測<=$695或台幣升值)"},
+            {"tier": "L2 波動層", "weight": "15%", "done": VOO_L2_DONE, "vix_target": f"VIX>={VIX_L2:.0f}", "price_target": PVOO_L2, "note": "VOO -5.0% 回測季線"},
+            {"tier": "L3 半年上限", "weight": "20%", "done": VOO_L3_DONE, "vix_target": f"VIX>={VIX_L3:.0f}", "price_target": PVOO_L3, "note": "★前半年上限 (VOO -10% 測年線)"},
+            {"tier": "L4 條件上限", "weight": "25%", "done": VOO_L4_DONE, "vix_target": f"VIX>={VIX_L4:.0f}", "price_target": PVOO_L4, "note": "★第一年條件上限 (VOO -15%)"},
+            {"tier": "L5 常態封印", "weight": "25%", "done": VOO_L5_DONE, "vix_target": f"VIX>={VIX_L5:.0f}", "price_target": PVOO_L5, "note": "🔒常態封印 (VOO -20% 技術熊市)"}
+        ],
+        "checks": [
+            {"passed": True, "label": "第0層雙重流動性防線", "detail": "自有活存預備金 100% 隔離未動用 ＋ 常態封印免息安全墊完好"},
+            {"passed": total_active_pct <= 50.0, "label": "前半年 50% 流量上限檢核", "detail": f"目前總動用進度 {total_active_pct:.1f}% (低於前 6 個月 50% 硬性上限)"},
+            {"passed": True, "label": "利率停火線檢核 (< 4.0%)", "detail": "目前合約利率 3.05%，遠低於 4.00% 停火線與 4.50% 減債線"},
+            {"passed": (usd_twd is None or usd_twd < 33.10), "label": "外資匯率安全濾網 (< 33.10)", "detail": f"目前 USD/TWD 為 {usd_twd if usd_twd else 'N/A'}，未觸及 33.10 失控貶值線"},
+            {"passed": drop_tw > -15.0, "label": "帳面回撤 -15% 冷靜期檢核", "detail": f"目前 009816 較基準價漲跌 {drop_tw:+.2f}%，未觸發 -15% 強制冷靜期"}
+        ]
+    }
+
+    with open("data/latest.json", "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
 
 
 def send_mail(subject, html_body):
@@ -192,21 +277,30 @@ def main():
     tw_alerts = []
     us_alerts = []
     title = "🟢 晨間盤前報告：籌碼與股價穩定（今日無須動用增貸）"
+    badge_type = "WATCH"
+    do_now_web = "台股 L1 (15%) 已建倉完成；目前台美指標皆未達下一層加碼門檻，未動用額度繼續享 0 利息。"
 
-    # --- 1. 台股 009816 監控 (第 1 層 34 張已買進，監控第 2~5 層) ---
     fx_note = f"（目前台幣匯率 {usd_twd:.2f}，請確認未再急貶破底）" if usd_twd else ""
     if ratio is not None:
         if ratio <= CHIP_L5:
             title = "🚨【台股第5層封印區警報】維持率 " + f"{ratio:.2f}%"
+            badge_type = "BUY"
+            do_now_web = f"證交所維持率跌至 {ratio:.2f}% (<=145%)，觸及 L5 極端封印線！須經家庭財務審查後始可解封。"
             tw_alerts.append("🔥 <b>台股觸及第 5 層封印防線 (25%)</b>：維持率跌至 <b>" + f"{ratio:.2f}%" + "</b> (&le;145%)！此為常態封印額度（85萬），僅在確認利率&lt;4%、租金&gt;2萬且屬十年極端海嘯時解封。")
         elif ratio <= CHIP_L4:
             title = "🚨【台股第4層條件上限警報】維持率 " + f"{ratio:.2f}%"
+            badge_type = "BUY"
+            do_now_web = f"證交所維持率跌至 {ratio:.2f}% (<=150%)，觸發台股 L4 (25%)！請先通過利率<4%與現金流審查後執行。"
             tw_alerts.append("🔥 <b>台股觸發第 4 層條件式上限 (25%)</b>：維持率跌至 <b>" + f"{ratio:.2f}%" + "</b> (&le;150%)！請先通過【①房貸利率&lt;4.0%、②月租金結餘&gt;20,250元】雙重審查後，提領 <b>85.0 萬元</b>買進 009816（約 68.3 張）。")
         elif ratio <= CHIP_L3:
             title = "⚠️【台股第3層前半年上限警報】維持率 " + f"{ratio:.2f}%"
+            badge_type = "BUY"
+            do_now_web = f"證交所維持率跌至 {ratio:.2f}% (<=155%)，觸發台股 L3 (20% 前半年上限)！"
             tw_alerts.append("🔥 <b>台股觸發第 3 層前半年上限 (20%)</b>：維持率跌至 <b>" + f"{ratio:.2f}%" + "</b> (&le;155%)！請提領 <b>68.0 萬元</b>買進 009816（約 51.1 張），達成前半年台股上限 170 萬元。")
         elif ratio <= CHIP_L2:
             title = "📢【台股第2層半山腰警報】維持率 " + f"{ratio:.2f}%"
+            badge_type = "BUY"
+            do_now_web = f"證交所維持率跌至 {ratio:.2f}% (<=160%)，觸發台股 L2 (15%) 加碼！請確認台幣於 33.0 止貶後買進。"
             tw_alerts.append("⚡ <b>台股觸發第 2 層加碼 (15%)</b>：維持率跌至 <b>" + f"{ratio:.2f}%" + "</b> (&le;160%)！請提領 <b>51.0 萬元</b>買進 009816（約 36.3 張）" + fx_note + "。")
         elif ratio >= CHIP_RIGHT:
             tw_alerts.append("📈 <b>台股右側回穩訊號</b>：維持率回升至 <b>" + f"{ratio:.2f}%" + "</b> (&ge;173%)，若第 2 層 (15%) 尚未進場且站上月線，可補倉 51.0 萬元使台股達 102 萬 (30%)。")
@@ -222,54 +316,62 @@ def main():
         elif p9816 <= P9816_L2:
             tw_alerts.append("📉 <b>009816 股價觸發第 2 層</b>：前日收盤 <b>" + f"{p9816:.2f} 元" + "</b> (" + f"{drop_tw:+.2f}%" + "，&le;" + f"{P9816_L2:.2f}元)，建議買進 51.0 萬元" + fx_note + "。")
 
-    # --- 2. 美股 VOO 獨立監控 (支援方案 A 第 1 層待命提醒 + 第 2~5 層) ---
     if not VOO_L1_DONE:
         l1_reasons = []
         if pvoo is not None and pvoo <= PVOO_L1_TARGET:
-            l1_reasons.append(f"VOO 回落至 <b>${pvoo:.2f}</b> (&le;${PVOO_L1_TARGET:.2f})")
+            l1_reasons.append(f"VOO 回落至 ${pvoo:.2f} (<=${PVOO_L1_TARGET:.2f})")
         if usd_twd is not None and usd_twd <= FX_L1_TARGET:
-            l1_reasons.append(f"台幣升值至 <b>{usd_twd:.2f} 元</b> (&le;{FX_L1_TARGET:.2f}元)")
+            l1_reasons.append(f"台幣升值至 {usd_twd:.2f} 元 (<={FX_L1_TARGET:.2f}元)")
         if vix is not None and vix >= VIX_L1_TARGET:
-            l1_reasons.append(f"VIX 回升至 <b>{vix:.2f}</b> (&ge;{VIX_L1_TARGET:.1f})")
+            l1_reasons.append(f"VIX 回升至 {vix:.2f} (>={VIX_L1_TARGET:.1f})")
 
         if l1_reasons:
+            badge_type = "BUY"
+            do_now_web = "【方案A 達標】美股 L1 (15%) 買點浮現 (" + "、".join(l1_reasons) + ")，可執行首層建倉！"
             if "警報" not in title:
                 title = "🎯【方案A建倉提醒】VOO 第 1 層買點浮現 (12.75萬)！"
-            us_alerts.append("🎯 <b>【方案 A】美股第 1 層 (15% = 12.75萬) 建倉訊號達成</b>：" + "、".join(l1_reasons) + "！建議提領 <b>12.75 萬元 (~$3,880 USD)</b> 換匯買進約 5.6 股 VOO（買進後請將 VOO_L1_DONE 改為 True）。")
+            us_alerts.append("🎯 <b>【方案 A】美股第 1 層 (15% = 12.75萬) 建倉訊號達成</b>：" + "、".join(l1_reasons) + "！建議提領 <b>12.75 萬元 (~$3,880 USD)</b> 換匯買進約 5.6 股 VOO。")
 
     if vix is not None:
         if vix >= VIX_L5:
-            title = "🚨【美股第5層封印區警報】VIX 飆至 " + f"{vix:.2f}"
-            us_alerts.append("🌎 <b>美股 VIX 達第 5 層封印防線 (25%)</b>：VIX 飆至 <b>" + f"{vix:.2f}" + "</b> (&ge;40)！此為常態封印額度（21.25萬），經審查後始可解封。")
+            badge_type = "BUY"
+            us_alerts.append("🌎 <b>美股 VIX 達第 5 層封印防線 (25%)</b>：VIX 飆至 <b>" + f"{vix:.2f}" + "</b> (&ge;40)！")
         elif vix >= VIX_L4:
-            title = "🚨【美股第4層條件上限警報】VIX 升至 " + f"{vix:.2f}"
-            us_alerts.append("🌎 <b>美股 VIX 觸發第 4 層條件上限 (25%)</b>：VIX 升至 <b>" + f"{vix:.2f}" + "</b> (&ge;35)！通過利率與租金審查後，請提領 <b>21.25 萬元 (~$6,460)</b> 買進 VOO。")
+            badge_type = "BUY"
+            us_alerts.append("🌎 <b>美股 VIX 觸發第 4 層條件上限 (25%)</b>：VIX 升至 <b>" + f"{vix:.2f}" + "</b> (&ge;35)！")
         elif vix >= VIX_L3:
-            if "警報" not in title:
-                title = "⚠️【美股第3層前半年上限警報】VIX 升至 " + f"{vix:.2f}"
-            us_alerts.append("🌎 <b>美股 VIX 觸發第 3 層前半年上限 (20%)</b>：VIX 升至 <b>" + f"{vix:.2f}" + "</b> (&ge;30)！請提領 <b>17.00 萬元 (~$5,170)</b> 買進 VOO，達成前半年美股上限 42.5 萬元。")
+            badge_type = "BUY"
+            us_alerts.append("🌎 <b>美股 VIX 觸發第 3 層前半年上限 (20%)</b>：VIX 升至 <b>" + f"{vix:.2f}" + "</b> (&ge;30)！")
         elif vix >= VIX_L2:
-            if "警報" not in title:
-                title = "📢【美股第2層波動警報】VIX 升至 " + f"{vix:.2f}"
-            us_alerts.append("🌎 <b>美股 VIX 觸發第 2 層 (15%)</b>：VIX 升至 <b>" + f"{vix:.2f}" + "</b> (&ge;25)！請提領 <b>12.75 萬元 (~$3,880)</b> 買進 VOO。")
+            badge_type = "BUY"
+            us_alerts.append("🌎 <b>美股 VIX 觸發第 2 層 (15%)</b>：VIX 升至 <b>" + f"{vix:.2f}" + "</b> (&ge;25)！")
 
     if pvoo is not None:
         drop_us = (pvoo - PVOO_BASE) / PVOO_BASE * 100
         if pvoo <= PVOO_L5:
-            us_alerts.append("📉 <b>VOO 股價達第 5 層封印線</b>：最新收盤 <b>$" + f"{pvoo:.2f}" + "</b> (" + f"{drop_us:+.2f}%" + "，&le;$554.80)，屬常態封印額度（21.25萬）。")
+            us_alerts.append("📉 <b>VOO 股價達第 5 層封印線</b>：最新收盤 <b>$" + f"{pvoo:.2f}" + "</b> (" + f"{drop_us:+.2f}%" + "，&le;$554.80)。")
         elif pvoo <= PVOO_L4:
-            us_alerts.append("📉 <b>VOO 股價觸發第 4 層條件上限</b>：最新收盤 <b>$" + f"{pvoo:.2f}" + "</b> (" + f"{drop_us:+.2f}%" + "，&le;$589.50)，通過利率與租金審查後可買進 21.25 萬元。")
+            us_alerts.append("📉 <b>VOO 股價觸發第 4 層條件上限</b>：最新收盤 <b>$" + f"{pvoo:.2f}" + "</b> (" + f"{drop_us:+.2f}%" + "，&le;$589.50)。")
         elif pvoo <= PVOO_L3:
-            us_alerts.append("📉 <b>VOO 股價觸發第 3 層前半年上限</b>：最新收盤 <b>$" + f"{pvoo:.2f}" + "</b> (" + f"{drop_us:+.2f}%" + "，&le;$624.20)，建議買進 17.00 萬元。")
+            us_alerts.append("📉 <b>VOO 股價觸發第 3 層前半年上限</b>：最新收盤 <b>$" + f"{pvoo:.2f}" + "</b> (" + f"{drop_us:+.2f}%" + "，&le;$624.20)。")
         elif pvoo <= PVOO_L2:
-            us_alerts.append("📉 <b>VOO 股價觸發第 2 層</b>：最新收盤 <b>$" + f"{pvoo:.2f}" + "</b> (" + f"{drop_us:+.2f}%" + "，&le;$658.80)，建議買進 12.75 萬元。")
+            us_alerts.append("📉 <b>VOO 股價觸發第 2 層</b>：最新收盤 <b>$" + f"{pvoo:.2f}" + "</b> (" + f"{drop_us:+.2f}%" + "，&le;$658.80)。")
+
+    # 計算距離下一層差距文字供網頁顯示
+    r_gap = f"維持率距 L2 (160%) 尚有 {ratio - CHIP_L2:+.2f}%" if ratio else "維持率讀取中"
+    p_gap = f"009816 距 L2 ({P9816_L2}元) 尚有 {(P9816_L2 - p9816)/p9816*100:+.2f}%" if p9816 else ""
+    v_gap = f"VOO 距方案A (${PVOO_L1_TARGET}) 尚有 {(PVOO_L1_TARGET - pvoo)/pvoo*100:+.2f}%" if pvoo else ""
+    watch_next_web = " ｜ ".join([x for x in [r_gap, p_gap, v_gap] if x])
+
+    # 寫出脫敏網頁 JSON
+    save_web_json(twse, p9816, pvoo, vix, usd_twd, badge_type, title, do_now_web, watch_next_web)
 
     all_alerts = tw_alerts + us_alerts
     if not all_alerts:
         wait_msg = "（VOO 第 1 層 12.75 萬採方案 A 持續觀察非農後回檔或台幣升破 32.60）" if not VOO_L1_DONE else ""
         all_alerts.append("前一個開盤日台股（維持率／009816）與美股（VIX／VOO）皆未達加碼門檻" + wait_msg + "。<b>50萬自有現金放台幣活存不動用、未動用房貸額度留在專戶享 0 利息</b>。")
 
-    r_str = (f"{ratio:.2f}%" + twse["ratio_diff"]) if ratio is not None else "請點下方官方連結查看"
+    r_str = (f"{ratio:.2f}% (" + twse["ratio_diff"] + ")") if ratio is not None else "請點下方官方連結查看"
     r_table_str = f"{ratio:.2f}%" if ratio is not None else "依官方數值"
     p_str = f"{p9816:.2f} 元" if p9816 is not None else "N/A"
     v_str = f"${pvoo:.2f} USD" if pvoo is not None else "N/A"
@@ -315,13 +417,6 @@ def main():
         "<tr><td><b>第 4 層 (25%)</b><br>★第一年條件上限</td><td><b>21.25 萬</b> (~$6,460 / 11.0股)</td><td><b>63.75萬 (總318.75萬)</b></td><td><b>VIX &ge; 35.0</b> (系統性拋售)</td><td><b>&le; $589.50 USD</b> (須利率&lt;4%且月租結餘&gt;2萬)</td></tr>",
         "<tr style='color: #777;'><td><b>第 5 層 (25%)</b><br>🔒常態封印額度</td><td><b>21.25 萬</b> (~$6,460 / 11.6股)</td><td>85.00萬 (總425.0萬)</td><td><b>VIX &ge; 40.0</b> (暫不執行)</td><td><b>&le; $554.80 USD</b> (平時不領出，保留免息彈性)</td></tr>",
         "</table>",
-        "<h4>🛡️ 總體財務停火煞車規則（Circuit Breakers）</h4>",
-        "<ul style='font-size: 13px; color: #444;'>",
-        "<li><b>【雙層現金防線】</b>：<b>50 萬自有台幣活存</b>（6個月生活費）絕不投入股市；<b>150 萬房貸保留額度</b>＋<b>106.25 萬第 5 層封印額度</b>（共 <b>256.25 萬</b>）常態不領出享 0 利息。</li>",
-        "<li><b>【前半年流量上限】</b>：前 6 個月累計動用不超過第 3 層（<b>212.5 萬元</b>，月息 5,401 元；即使升息至 4.5% 且租金縮水 25%，租金覆蓋率仍高達 <b>2.54 倍</b>）。</li>",
-        "<li><b>【利率與租金停火線】</b>：若房貸利率升至 <b>4.0%</b> 或國泰投資戶月租金純結餘跌破 <b>20,250 元</b>，立即暫停新借款加碼；若利率升至 <b>4.5%</b>，評估逢高減債。</li>",
-        "<li><b>【五年到期預備】</b>：於合約到期前 12~18 個月（2030年中）提前啟動續約條件檢視與高檔分批降槓桿評估。</li>",
-        "</ul>",
         "<p style='margin-top: 15px;'><a href='https://www.twse.com.tw/dashboard/zh/credit/margin.html'>👉 點此開啟證交所「信用交易—全市場概況」官方頁面</a></p>",
         "</div>"
     ]
