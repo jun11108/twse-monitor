@@ -4,7 +4,10 @@ on:
   schedule:
     # UTC 23:00 (週日至週五) = 台灣時間 週一至週六 每天早上 07:00 自動執行
     - cron: '0 23 * * 0-5'
-  workflow_dispatch: # 支援隨時手動一鍵測試
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   check_margin:
@@ -23,9 +26,17 @@ jobs:
           pip install playwright yfinance requests
           playwright install chromium
 
-      - name: Run Monitor & Send Email
+      - name: Run Monitor, Generate JSON & Send Email
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-          NOTIFY_EMAIL: "junn11108@gmail.com"
+          NOTIFY_EMAIL: "jun11108@cht.com.tw"
         run: python monitor.py
+
+      - name: Auto-Commit latest.json for Web Dashboard
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Actions Bot"
+          git add data/latest.json
+          git diff --staged --quiet || git commit -m "Auto update daily strategy data"
+          git push
