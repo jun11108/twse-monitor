@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>台美雙軌五階梯量化策略戰情室 (百分比脫敏版)</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #1c2330;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --green: #3fb950;
+      --green-bg: rgba(63,185,80,.14);
+      --yellow: #d29922;
+      --yellow-bg: rgba(210,153,34,.14);
+      --red: #f85149;
+      --red-bg: rgba(248,81,73,.14);
+      --blue: #58a6ff;
+      --blue-bg: rgba(88,166,255,.14);
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      font-size: 14px;
+      line-height: 1.55;
+      padding-bottom: 50px;
+    }
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    header h1 { font-size: 18px; font-weight: 700; }
+    .meta { font-size: 12px; color: var(--muted); }
+    main { max-width: 1080px; margin: 0 auto; padding: 20px 16px; }
+    .verdict-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--green);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      margin-bottom: 20px;
+    }
+    .verdict-box.buy { border-left-color: var(--red); background: rgba(248,81,73,.06); }
+    .verdict-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+    .badge {
+      padding: 3px 10px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .badge.watch { background: var(--green-bg); color: var(--green); border: 1px solid rgba(63,185,80,.4); }
+    .badge.buy { background: var(--red-bg); color: var(--red); border: 1px solid rgba(248,81,73,.4); }
+    .verdict-line { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .verdict-line b { color: var(--text); }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .card-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+    .card-val { font-size: 24px; font-weight: 800; margin-bottom: 4px; }
+    .card-sub { font-size: 12px; color: var(--muted); }
+    .up { color: var(--red); }
+    .down { color: var(--green); }
+    .accent { color: var(--blue); }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin: 22px 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .gauge-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 22px;
+    }
+    .bar-track {
+      height: 14px;
+      background: var(--surface2);
+      border-radius: 99px;
+      overflow: hidden;
+      display: flex;
+      margin: 10px 0;
+      border: 1px solid var(--border);
+    }
+    .bar-used { background: var(--blue); }
+    .bar-avail { background: var(--yellow); }
+    .bar-sealed { background: rgba(63,185,80,.45); }
+    .legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .stage-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .tier-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      position: relative;
+    }
+    .tier-box.done {
+      border-color: var(--green);
+      background: rgba(63,185,80,.07);
+    }
+    .tier-box.cap {
+      border-color: var(--yellow);
+    }
+    .tier-box.sealed {
+      opacity: 0.65;
+      border-style: dashed;
+    }
+    .tier-top {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+    .tier-detail { font-size: 12px; color: var(--muted); line-height: 1.45; }
+    .tier-detail strong { color: var(--text); }
+
+    .check-list {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+    .check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(48,54,61,.5);
+      font-size: 13px;
+    }
+    .check-item:last-child { border-bottom: none; }
+    .check-item .detail { color: var(--muted); margin-left: auto; font-size: 12px; text-align: right; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>📊 台美雙軌五階梯量化策略戰情室</h1>
+      <div class="meta">80% 台股核心 (009816) ＋ 20% 美股衛星 (VOO) ｜ 15/15/20/25/25 穩健金字塔 (百分比脫敏版)</div>
+    </div>
+    <div class="meta" id="update-time">載入最新資料中...</div>
+  </header>
+
+  <main>
+    <!-- 模組 1：今日行動總指揮框 -->
+    <div class="verdict-box" id="verdict-box">
+      <div class="verdict-head">
+        <span class="badge watch" id="v-badge">WATCH</span>
+        <strong style="font-size:16px;" id="v-headline">讀取策略狀態中...</strong>
+      </div>
+      <div class="verdict-line"><b>【今日行動】</b><span id="v-do">--</span></div>
+      <div class="verdict-line"><b>【距離下層觸發】</b><span id="v-watch">--</span></div>
+    </div>
+
+    <!-- 模組 2：四大市場溫度計 -->
+    <div class="grid-4">
+      <div class="card">
+        <div class="card-label">【台股籌碼】證交所全市場擔保維持率</div>
+        <div class="card-val up" id="m-ratio">--%</div>
+        <div class="card-sub" id="m-credit">追繳：-- ｜ 處分：--</div>
+      </div>
+      <div class="card">
+        <div class="card-label">【台股核心 80%】009816 凱基50</div>
+        <div class="card-val accent" id="m-9816">-- 元</div>
+        <div class="card-sub" id="m-9816-sub">較 L1 基準價漲跌：--%</div>
+      </div>
+      <div class="card">
+        <div class="card-label">【美股衛星 20%】VOO ＆ VIX 恐慌指數</div>
+        <div class="card-val accent" id="m-voo">$--</div>
+        <div class="card-sub" id="m-vix">VIX 恐慌指數：-- (≥25 波動 / ≥30 恐慌)</div>
+      </div>
+      <div class="card">
+        <div class="card-label">【外資匯率濾網】美元兌新台幣 (USD/TWD)</div>
+        <div class="card-val" id="m-fx">-- 元</div>
+        <div class="card-sub">方案A換匯點 ≤32.60 ｜ 止貶觀察 33.0</div>
+      </div>
+    </div>
+
+    <!-- 模組 3：水位流量管制與利息安全邊際 (百分比脫敏) -->
+    <div class="section-title">🛡️ 總體水位流量管制與壓力測試安全邊際 (百分比脫敏)</div>
+    <div class="gauge-wrap">
+      <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:600;">
+        <span id="g-active">目前已動用進度：12.0% (台股 L1 已建倉 / 美股 L1 方案A待命)</span>
+        <span>前半年硬性上限：50.0% ｜ 常態封印安全墊：25.0%</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-used" id="bar-used" style="width: 12%"></div>
+        <div class="bar-avail" style="width: 63%"></div>
+        <div class="bar-sealed" style="width: 25%"></div>
+      </div>
+      <div class="legend-row">
+        <span>🟦 已動用部位 (<b id="leg-used">12.0%</b>)</span>
+        <span>🟨 階梯待命區 (前半年上限 <b>50%</b> / 第一年條件上限 <b>75%</b>)</span>
+        <span>🟩 常態免息安全墊 (第0層現金防線 ＋ 第5層封印款 <b>25%</b>)</span>
+        <span>⚡ 現況現金流覆蓋倍數：<b style="color:var(--green)" id="cov-now">20.8x</b> (4.5%極端升息壓力覆蓋：<b id="cov-stress">2.54x</b>)</span>
+      </div>
+    </div>
+
+    <!-- 模組 4：台股 009816 五階梯闖關進度 -->
+    <div class="section-title">🔺 軌道一：台股 009816 五階梯金字塔 (佔總權重 80%)</div>
+    <div class="stage-grid" id="tw-tiers"></div>
+
+    <!-- 模組 5：美股 VOO 五階梯闖關進度 -->
+    <div class="section-title">🌎 軌道二：美股 VOO 獨立五階梯金字塔 (佔總權重 20%，與台股脫鉤)</div>
+    <div class="stage-grid" id="us-tiers"></div>
+
+    <!-- 模組 6：五大財務停火煞車檢查表 -->
+    <div class="section-title">✅ 總體財務停火煞車檢查表 (Circuit Breakers)</div>
+    <div class="check-list" id="check-list"></div>
+  </main>
+
+  <script>
+    async function loadDashboard() {
+      try {
+        const res = await fetch("./data/latest.json?t=" + Date.now(), { cache: "no-store" });
+        const d = await res.json();
+
+        document.getElementById("update-time").textContent = `資料基準日：${d.data_date} ｜ 系統更新：${d.updated_at}`;
+
+        const vbox = document.getElementById("verdict-box");
+        const vbadge = document.getElementById("v-badge");
+        vbadge.textContent = d.verdict.badge;
+        if (d.verdict.badge === "BUY") {
+          vbox.classList.add("buy");
+          vbadge.className = "badge buy";
+        }
+        document.getElementById("v-headline").textContent = d.verdict.headline;
+        document.getElementById("v-do").textContent = d.verdict.do_now;
+        document.getElementById("v-watch").textContent = d.verdict.watch_next;
+
+        const m = d.metrics;
+        document.getElementById("m-ratio").textContent = m.twse_ratio ? `${m.twse_ratio.toFixed(2)}% ${m.twse_ratio_diff || ''}` : "讀取中";
+        document.getElementById("m-credit").textContent = `追繳：${m.mc_acc} (${m.mc_amt}) ｜ 處分：${m.liq_acc} (${m.liq_amt})`;
+        document.getElementById("m-9816").textContent = m.p9816 ? `${m.p9816.toFixed(2)} 元` : "N/A";
+        document.getElementById("m-9816-sub").textContent = `L1 基準價 ${m.p9816_base} 元 (${m.p9816_change_pct >= 0 ? '+' : ''}${m.p9816_change_pct}%)`;
+        document.getElementById("m-voo").textContent = m.pvoo ? `$${m.pvoo.toFixed(2)}` : "N/A";
+        document.getElementById("m-vix").textContent = `VIX 恐慌指數：${m.vix ?? 'N/A'} ｜ 較基準 (${m.pvoo_change_pct >= 0 ? '+' : ''}${m.pvoo_change_pct}%)`;
+        document.getElementById("m-fx").textContent = m.usd_twd ? `${m.usd_twd.toFixed(2)} 元` : "N/A";
+
+        const g = d.capital_gauge;
+        document.getElementById("g-active").textContent = `目前已動用總權重：${g.active_invest_pct}%`;
+        document.getElementById("leg-used").textContent = `${g.active_invest_pct}%`;
+        document.getElementById("bar-used").style.width = `${g.active_invest_pct}%`;
+        document.getElementById("cov-now").textContent = g.interest_coverage_current;
+        document.getElementById("cov-stress").textContent = g.interest_coverage_stress;
+
+        document.getElementById("tw-tiers").innerHTML = d.tw_tiers.map((t, i) => {
+          const cls = t.done ? "tier-box done" : (i === 4 ? "tier-box sealed" : (i === 2 ? "tier-box cap" : "tier-box"));
+          const icon = t.done ? "✅ 已建倉" : (i === 4 ? "🔒 封印" : "⏳ 待命");
+          const dist = (m.p9816 && !t.done) ? ` (距現價 ${((t.price_target - m.p9816)/m.p9816*100).toFixed(1)}%)` : "";
+          return `<div class="${cls}">
+            <div class="tier-top"><span>${t.tier} (${t.weight})</span><span>${icon}</span></div>
+            <div class="tier-detail">
+              維持率觸發：<strong>${t.chip_target}</strong><br>
+              目標股價：<strong>${t.price_target} 元</strong>${dist}<br>
+              <span style="font-size:11px;">${t.note}</span>
+            </div>
+          </div>`;
+        }).join("");
+
+        document.getElementById("us-tiers").innerHTML = d.us_tiers.map((t, i) => {
+          const cls = t.done ? "tier-box done" : (i === 4 ? "tier-box sealed" : (i === 2 ? "tier-box cap" : "tier-box"));
+          const icon = t.done ? "✅ 已建倉" : (i === 4 ? "🔒 封印" : "⏳ 待命");
+          const dist = (m.pvoo && !t.done) ? ` (距現價 ${((t.price_target - m.pvoo)/m.pvoo*100).toFixed(1)}%)` : "";
+          return `<div class="${cls}">
+            <div class="tier-top"><span>${t.tier} (${t.weight})</span><span>${icon}</span></div>
+            <div class="tier-detail">
+              情緒/匯率：<strong>${t.vix_target}</strong><br>
+              目標股價：<strong>$${t.price_target}</strong>${dist}<br>
+              <span style="font-size:11px;">${t.note}</span>
+            </div>
+          </div>`;
+        }).join("");
+
+        document.getElementById("check-list").innerHTML = d.checks.map(c => `
+          <div class="check-item">
+            <span>${c.passed ? "✅" : "❌"} <b>${c.label}</b></span>
+            <span class="detail">${c.detail}</span>
+          </div>
+        `).join("");
+      } catch (e) {
+        document.getElementById("v-headline").textContent = "尚無 latest.json 資料，請先至 GitHub Actions 點擊 Run workflow 產生第一筆資料！";
+      }
+    }
+    loadDashboard();
+  </script>
+</body>
+</html>
