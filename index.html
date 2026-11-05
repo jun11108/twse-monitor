@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>台美雙軌五階梯量化策略戰情室 (百分比脫敏版)</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
     :root {
       --bg: #0d1117;
@@ -15,11 +16,9 @@
       --green: #3fb950;
       --green-bg: rgba(63,185,80,.14);
       --yellow: #d29922;
-      --yellow-bg: rgba(210,153,34,.14);
       --red: #f85149;
       --red-bg: rgba(248,81,73,.14);
       --blue: #58a6ff;
-      --blue-bg: rgba(88,166,255,.14);
       --radius: 12px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -57,12 +56,7 @@
     }
     .verdict-box.buy { border-left-color: var(--red); background: rgba(248,81,73,.06); }
     .verdict-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
-    .badge {
-      padding: 3px 10px;
-      border-radius: 99px;
-      font-size: 12px;
-      font-weight: 700;
-    }
+    .badge { padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 700; }
     .badge.watch { background: var(--green-bg); color: var(--green); border: 1px solid rgba(63,185,80,.4); }
     .badge.buy { background: var(--red-bg); color: var(--red); border: 1px solid rgba(248,81,73,.4); }
     .verdict-line { font-size: 13px; color: var(--muted); margin-top: 4px; }
@@ -72,103 +66,97 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
       gap: 14px;
-      margin-bottom: 22px;
+      margin-bottom: 14px;
     }
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
     }
-    .card-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+    .card:hover {
+      border-color: var(--blue);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+    .card.active {
+      border-color: var(--blue);
+      background: var(--surface2);
+      box-shadow: 0 0 0 1px var(--blue);
+    }
+    .card-hint {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      font-size: 11px;
+      color: var(--blue);
+      background: rgba(88,166,255,.12);
+      padding: 2px 7px;
+      border-radius: 6px;
+    }
+    .card-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 600; padding-right: 55px; }
     .card-val { font-size: 24px; font-weight: 800; margin-bottom: 4px; }
     .card-sub { font-size: 12px; color: var(--muted); }
     .up { color: var(--red); }
     .down { color: var(--green); }
     .accent { color: var(--blue); }
 
-    .section-title {
-      font-size: 15px;
-      font-weight: 700;
-      margin: 22px 0 12px;
+    /* 展開式互動走勢圖面板 */
+    .chart-drawer {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--blue);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 22px;
+      animation: fadeIn 0.25s ease;
+    }
+    .chart-drawer.open { display: block; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .chart-header {
       display: flex;
+      justify-content: space-between;
       align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
       gap: 8px;
     }
-    .gauge-wrap {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px;
-      margin-bottom: 22px;
-    }
-    .bar-track {
-      height: 14px;
+    .chart-title { font-size: 15px; font-weight: 700; color: var(--text); }
+    .chart-close {
       background: var(--surface2);
-      border-radius: 99px;
-      overflow: hidden;
-      display: flex;
-      margin: 10px 0;
+      color: var(--muted);
       border: 1px solid var(--border);
+      padding: 4px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
     }
+    .chart-close:hover { color: var(--text); border-color: var(--text); }
+    .chart-box { position: relative; height: 290px; width: 100%; }
+
+    .section-title { font-size: 15px; font-weight: 700; margin: 22px 0 12px; display: flex; align-items: center; gap: 8px; }
+    .gauge-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 22px; }
+    .bar-track { height: 14px; background: var(--surface2); border-radius: 99px; overflow: hidden; display: flex; margin: 10px 0; border: 1px solid var(--border); }
     .bar-used { background: var(--blue); }
     .bar-avail { background: var(--yellow); }
     .bar-sealed { background: rgba(63,185,80,.45); }
-    .legend-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .stage-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-    .tier-box {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px;
-      position: relative;
-    }
-    .tier-box.done {
-      border-color: var(--green);
-      background: rgba(63,185,80,.07);
-    }
-    .tier-box.cap {
-      border-color: var(--yellow);
-    }
-    .tier-box.sealed {
-      opacity: 0.65;
-      border-style: dashed;
-    }
-    .tier-top {
-      display: flex;
-      justify-content: space-between;
-      font-weight: 700;
-      font-size: 13px;
-      margin-bottom: 6px;
-    }
+    .legend-row { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--muted); }
+    .stage-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 10px; margin-bottom: 20px; }
+    .tier-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+    .tier-box.done { border-color: var(--green); background: rgba(63,185,80,.07); }
+    .tier-box.cap { border-color: var(--yellow); }
+    .tier-box.sealed { opacity: 0.65; border-style: dashed; }
+    .tier-top { display: flex; justify-content: space-between; font-weight: 700; font-size: 13px; margin-bottom: 6px; }
     .tier-detail { font-size: 12px; color: var(--muted); line-height: 1.45; }
     .tier-detail strong { color: var(--text); }
-
-    .check-list {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px 16px;
-    }
-    .check-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(48,54,61,.5);
-      font-size: 13px;
-    }
+    .check-list { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+    .check-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(48,54,61,.5); font-size: 13px; }
     .check-item:last-child { border-bottom: none; }
     .check-item .detail { color: var(--muted); margin-left: auto; font-size: 12px; text-align: right; }
   </style>
@@ -177,13 +165,12 @@
   <header>
     <div>
       <h1>📊 台美雙軌五階梯量化策略戰情室</h1>
-      <div class="meta">80% 台股核心 (009816) ＋ 20% 美股衛星 (VOO) ｜ 15/15/20/25/25 穩健金字塔 (百分比脫敏版)</div>
+      <div class="meta">80% 台股核心 (009816) ＋ 20% 美股衛星 (VOO) ｜ 點擊下方四張指標卡可展開歷史走勢圖</div>
     </div>
     <div class="meta" id="update-time">載入最新資料中...</div>
   </header>
 
   <main>
-    <!-- 模組 1：今日行動總指揮框 -->
     <div class="verdict-box" id="verdict-box">
       <div class="verdict-head">
         <span class="badge watch" id="v-badge">WATCH</span>
@@ -193,35 +180,49 @@
       <div class="verdict-line"><b>【距離下層觸發】</b><span id="v-watch">--</span></div>
     </div>
 
-    <!-- 模組 2：四大市場溫度計 -->
+    <!-- 四大可點擊指標卡片 -->
     <div class="grid-4">
-      <div class="card">
+      <div class="card" id="card-ratio" onclick="toggleChart('ratio')">
+        <span class="card-hint">📈 點擊看圖</span>
         <div class="card-label">【台股籌碼】證交所全市場擔保維持率</div>
         <div class="card-val up" id="m-ratio">--%</div>
         <div class="card-sub" id="m-credit">追繳：-- ｜ 處分：--</div>
       </div>
-      <div class="card">
+      <div class="card" id="card-p9816" onclick="toggleChart('p9816')">
+        <span class="card-hint">📈 點擊看圖</span>
         <div class="card-label">【台股核心 80%】009816 凱基50</div>
         <div class="card-val accent" id="m-9816">-- 元</div>
         <div class="card-sub" id="m-9816-sub">較 L1 基準價漲跌：--%</div>
       </div>
-      <div class="card">
+      <div class="card" id="card-voo" onclick="toggleChart('voo')">
+        <span class="card-hint">📈 點擊看圖</span>
         <div class="card-label">【美股衛星 20%】VOO ＆ VIX 恐慌指數</div>
         <div class="card-val accent" id="m-voo">$--</div>
-        <div class="card-sub" id="m-vix">VIX 恐慌指數：-- (≥25 波動 / ≥30 恐慌)</div>
+        <div class="card-sub" id="m-vix">VIX 恐慌指數：--</div>
       </div>
-      <div class="card">
+      <div class="card" id="card-fx" onclick="toggleChart('fx')">
+        <span class="card-hint">📈 點擊看圖</span>
         <div class="card-label">【外資匯率濾網】美元兌新台幣 (USD/TWD)</div>
         <div class="card-val" id="m-fx">-- 元</div>
         <div class="card-sub">方案A換匯點 ≤32.60 ｜ 止貶觀察 33.0</div>
       </div>
     </div>
 
-    <!-- 模組 3：水位流量管制與利息安全邊際 (百分比脫敏) -->
+    <!-- 展開式互動走勢圖容器 -->
+    <div class="chart-drawer" id="chart-drawer">
+      <div class="chart-header">
+        <div class="chart-title" id="chart-title">歷史走勢圖</div>
+        <button class="chart-close" onclick="closeChart()">✕ 收合圖表</button>
+      </div>
+      <div class="chart-box">
+        <canvas id="trendChart"></canvas>
+      </div>
+    </div>
+
     <div class="section-title">🛡️ 總體水位流量管制與壓力測試安全邊際 (百分比脫敏)</div>
     <div class="gauge-wrap">
-      <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:600;">
-        <span id="g-active">目前已動用進度：12.0% (台股 L1 已建倉 / 美股 L1 方案A待命)</span>
+      <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:600; flex-wrap:wrap; gap:6px;">
+        <span id="g-active">目前已動用進度：12.0%</span>
         <span>前半年硬性上限：50.0% ｜ 常態封印安全墊：25.0%</span>
       </div>
       <div class="bar-track">
@@ -237,24 +238,226 @@
       </div>
     </div>
 
-    <!-- 模組 4：台股 009816 五階梯闖關進度 -->
     <div class="section-title">🔺 軌道一：台股 009816 五階梯金字塔 (佔總權重 80%)</div>
     <div class="stage-grid" id="tw-tiers"></div>
 
-    <!-- 模組 5：美股 VOO 五階梯闖關進度 -->
     <div class="section-title">🌎 軌道二：美股 VOO 獨立五階梯金字塔 (佔總權重 20%，與台股脫鉤)</div>
     <div class="stage-grid" id="us-tiers"></div>
 
-    <!-- 模組 6：五大財務停火煞車檢查表 -->
     <div class="section-title">✅ 總體財務停火煞車檢查表 (Circuit Breakers)</div>
     <div class="check-list" id="check-list"></div>
   </main>
 
   <script>
+    let globalData = null;
+    let activeKey = null;
+    let chartInstance = null;
+
+    function closeChart() {
+      document.getElementById("chart-drawer").classList.remove("open");
+      document.querySelectorAll(".card").forEach(c => c.classList.remove("active"));
+      activeKey = null;
+    }
+
+    function toggleChart(key) {
+      if (!globalData || !globalData.history) return;
+      if (activeKey === key) {
+        closeChart();
+        return;
+      }
+      activeKey = key;
+      document.querySelectorAll(".card").forEach(c => c.classList.remove("active"));
+      document.getElementById("card-" + key).classList.add("active");
+      document.getElementById("chart-drawer").classList.add("open");
+
+      const h = globalData.history;
+      const m = globalData.metrics;
+      const ctx = document.getElementById("trendChart").getContext("2d");
+      if (chartInstance) chartInstance.destroy();
+
+      let labels = [];
+      let datasets = [];
+      let yConfig = {
+        grid: { color: "rgba(48,54,61,0.5)" },
+        ticks: { color: "#8b949e" }
+      };
+
+      if (key === "ratio") {
+        const pts = h.ratio || [];
+        labels = pts.map(p => p.d);
+        document.getElementById("chart-title").textContent = "📊 證交所全市場擔保維持率 近期走勢圖 (含 L2: 160% / L3: 155% 觸發線)";
+        datasets = [
+          {
+            label: "全市場擔保維持率 (%)",
+            data: pts.map(p => p.v),
+            borderColor: "#f85149",
+            backgroundColor: "rgba(248,81,73,0.15)",
+            borderWidth: 2.5,
+            pointRadius: 4,
+            fill: true,
+            tension: 0.25
+          },
+          {
+            label: "L2 半山腰觸發線 (160%)",
+            data: pts.map(() => 160.0),
+            borderColor: "#d29922",
+            borderDash: [6, 4],
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: false
+          },
+          {
+            label: "L3 前半年上限線 (155%)",
+            data: pts.map(() => 155.0),
+            borderColor: "#3fb950",
+            borderDash: [6, 4],
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: false
+          }
+        ];
+      } else if (key === "p9816") {
+        const pts = h.p9816 || [];
+        labels = pts.map(p => p.d);
+        const b = m.p9816_base || 14.91;
+        const l2 = Number((b * (1 - 0.058)).toFixed(2));
+        const l3 = Number((b * (1 - 0.108)).toFixed(2));
+        document.getElementById("chart-title").textContent = `📈 009816 (凱基50) 近60日收盤走勢圖 (L1基準:${b}元 / L2:${l2}元 / L3:${l3}元)`;
+        datasets = [
+          {
+            label: "009816 收盤價 (元)",
+            data: pts.map(p => p.v),
+            borderColor: "#58a6ff",
+            backgroundColor: "rgba(88,166,255,0.14)",
+            borderWidth: 2.5,
+            pointRadius: 2,
+            fill: true,
+            tension: 0.2
+          },
+          {
+            label: `L1 建倉基準價 (${b}元)`,
+            data: pts.map(() => b),
+            borderColor: "#8b949e",
+            borderDash: [4, 4],
+            borderWidth: 1.2,
+            pointRadius: 0,
+            fill: false
+          },
+          {
+            label: `L2 觸發目標價 (${l2}元)`,
+            data: pts.map(() => l2),
+            borderColor: "#d29922",
+            borderDash: [6, 4],
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: false
+          },
+          {
+            label: `L3 年線共振目標 (${l3}元)`,
+            data: pts.map(() => l3),
+            borderColor: "#3fb950",
+            borderDash: [6, 4],
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: false
+          }
+        ];
+      } else if (key === "voo") {
+        const ptsVoo = h.voo || [];
+        const ptsVix = h.vix || [];
+        labels = ptsVoo.map(p => p.d);
+        document.getElementById("chart-title").textContent = "🌎 美股 VOO 收盤價 ＆ VIX 恐慌指數 近60日雙軸走勢圖";
+        datasets = [
+          {
+            label: "VOO 收盤價 (USD, 左軸)",
+            data: ptsVoo.map(p => p.v),
+            borderColor: "#58a6ff",
+            backgroundColor: "rgba(88,166,255,0.12)",
+            borderWidth: 2.5,
+            pointRadius: 2,
+            fill: true,
+            tension: 0.2,
+            yAxisID: "y"
+          },
+          {
+            label: "VIX 恐慌指數 (右軸, ≥25觸發L2)",
+            data: ptsVix.map(p => p.v),
+            borderColor: "#f85149",
+            borderWidth: 2,
+            pointRadius: 2,
+            fill: false,
+            tension: 0.2,
+            yAxisID: "y1"
+          }
+        ];
+      } else if (key === "fx") {
+        const pts = h.fx || [];
+        labels = pts.map(p => p.d);
+        document.getElementById("chart-title").textContent = "💱 美元兌新台幣 (USD/TWD) 近60日走勢圖 (方案A換匯線: 32.60 / 止貶觀察: 33.00)";
+        datasets = [
+          {
+            label: "USD/TWD 匯率 (元)",
+            data: pts.map(p => p.v),
+            borderColor: "#d29922",
+            backgroundColor: "rgba(210,153,34,0.14)",
+            borderWidth: 2.5,
+            pointRadius: 2,
+            fill: true,
+            tension: 0.2
+          },
+          {
+            label: "方案A 理想換匯線 (32.60元)",
+            data: pts.map(() => 32.60),
+            borderColor: "#3fb950",
+            borderDash: [6, 4],
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: false
+          },
+          {
+            label: "外資止貶觀察線 (33.00元)",
+            data: pts.map(() => 33.00),
+            borderColor: "#f85149",
+            borderDash: [6, 4],
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: false
+          }
+        ];
+      }
+
+      const scalesConfig = {
+        x: { grid: { color: "rgba(48,54,61,0.35)" }, ticks: { color: "#8b949e", maxTicksLimit: 12 } },
+        y: yConfig
+      };
+      if (key === "voo") {
+        scalesConfig.y1 = {
+          position: "right",
+          grid: { drawOnChartArea: false },
+          ticks: { color: "#f85149" }
+        };
+      }
+
+      chartInstance = new Chart(ctx, {
+        type: "line",
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { labels: { color: "#e6edf3", font: { size: 12 } } }
+          },
+          scales: scalesConfig
+        }
+      });
+    }
+
     async function loadDashboard() {
       try {
         const res = await fetch("./data/latest.json?t=" + Date.now(), { cache: "no-store" });
         const d = await res.json();
+        globalData = d;
 
         document.getElementById("update-time").textContent = `資料基準日：${d.data_date} ｜ 系統更新：${d.updated_at}`;
 
@@ -320,7 +523,7 @@
           </div>
         `).join("");
       } catch (e) {
-        document.getElementById("v-headline").textContent = "尚無 latest.json 資料，請先至 GitHub Actions 點擊 Run workflow 產生第一筆資料！";
+        document.getElementById("v-headline").textContent = "請先至 GitHub Actions 點擊 Run workflow 更新歷史圖表資料！";
       }
     }
     loadDashboard();
