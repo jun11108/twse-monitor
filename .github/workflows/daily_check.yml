@@ -2,13 +2,13 @@ name: TWSE Margin Ratio Daily Monitor
 
 on:
   schedule:
-    # UTC 13:30 = 台灣時間晚上 21:30 (每週一至週五自動執行)
-    - cron: '30 13 * * 1-5'
-  workflow_dispatch: # 開啟手動一鍵測試按鈕
+    # UTC 23:00 (週日至週五) = 台灣時間 週一至週六 每天早上 07:00 自動執行
+    - cron: '0 23 * * 0-5'
+  workflow_dispatch: # 支援隨時手動一鍵測試
 
 jobs:
   check_margin:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -18,10 +18,10 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies & Playwright
+      - name: Install dependencies
         run: |
-          pip install playwright yfinance
-          playwright install --with-deps chromium
+          pip install playwright yfinance requests
+          playwright install chromium
 
       - name: Run Monitor & Send Email
         env:
