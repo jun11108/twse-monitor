@@ -35,8 +35,9 @@ jobs:
 
       - name: Auto-Commit latest.json for Web Dashboard
         run: |
-          git config --local user.email "actions@github.com"
-          git config --local user.name "GitHub Actions Bot"
-          git add data/latest.json
-          git diff --staged --quiet || git commit -m "Auto update daily strategy data"
-          git push
+          if [ -f data/latest.json ]; then
+            git config --local user.email "actions@github.com"
+            git config --local user.name "GitHub Actions Bot"
+            git add data/latest.json
+            git diff --staged --quiet || (git commit -m "Auto update daily strategy data" && git pull --rebase origin main && git push)
+          fi
