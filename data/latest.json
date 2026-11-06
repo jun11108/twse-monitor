@@ -1,11 +1,11 @@
 {
-  "updated_at": "2026-11-06 08:52",
+  "updated_at": "2026-11-06 10:53",
   "data_date": "2026-11-05",
   "verdict": {
     "badge": "BUY",
-    "headline": "📢【台股第2層半山腰警報】維持率 159.77%",
-    "do_now": "【方案A 達標】美股 L1 (15%) 買點浮現 (VOO 回落至 $673.97 (<=$695.00)、VIX 回升至 28.18 (>=20.0))！",
-    "watch_next": "維持率距 L2 (160%) 尚有 -0.23% ｜ 009816 距 L2 (14.05元) 尚有 -5.77% ｜ VOO 距方案A ($695.0) 尚有 +3.12%"
+    "headline": "🟢 晨間盤前報告：台股階段1+2(均價14.30元)、美股階段1已建倉，靜待階段三",
+    "do_now": "台股 L1+L2 (共30% / 總均價14.3元) 與美股 L1 (15%) 皆已完成！目前靜待台股階段三 (<=12.60元 / 維持率<=152%) 或美股階段二 (VIX>=25 / <=$640.3)。",
+    "watch_next": "維持率距階段三(152%)尚差 +7.77% ｜ 009816距階段三(12.60元)尚差 -10.00% ｜ VOO距階段二($640.30)尚差 -5.00%"
   },
   "metrics": {
     "twse_ratio": 159.77,
@@ -14,14 +14,14 @@
     "mc_amt": "26.86 億元",
     "liq_acc": "222 戶",
     "liq_amt": "6.42 億元",
-    "p9816": 14.91,
-    "p9816_base": 14.91,
-    "p9816_change_pct": 0.0,
+    "p9816": 14.0,
+    "p9816_base": 14.3,
+    "p9816_change_pct": -2.1,
     "pvoo": 673.97,
-    "pvoo_base": 693.54,
-    "pvoo_change_pct": -2.82,
+    "pvoo_base": 674.0,
+    "pvoo_change_pct": -0.0,
     "vix": 28.18,
-    "usd_twd": 33.04
+    "usd_twd": 32.93
   },
   "history": {
     "ratio": [
@@ -55,10 +55,6 @@
       }
     ],
     "p9816": [
-      {
-        "d": "08/07",
-        "v": 14.88
-      },
       {
         "d": "08/10",
         "v": 15.12
@@ -294,6 +290,10 @@
       {
         "d": "11/04",
         "v": 14.91
+      },
+      {
+        "d": "11/06",
+        "v": 14.0
       }
     ],
     "voo": [
@@ -1019,100 +1019,100 @@
       },
       {
         "d": "11/06",
-        "v": 33.04
+        "v": 32.93
       }
     ]
   },
   "capital_gauge": {
-    "active_invest_pct": 12.0,
+    "active_invest_pct": 27.0,
     "half_year_cap_pct": 50.0,
     "year_one_cond_cap_pct": 75.0,
     "sealed_reserve_pct": 25.0,
-    "interest_coverage_current": "20.8x",
+    "interest_coverage_current": "9.26x",
     "interest_coverage_stress": "2.54x"
   },
   "tw_tiers": [
     {
-      "tier": "L1 首倉",
+      "tier": "階段一 首倉",
       "weight": "15%",
       "done": true,
-      "chip_target": "撥款即買",
+      "chip_target": "165.5%",
       "price_target": 14.91,
-      "note": "0.382回撤位 (已建倉完成)"
+      "note": "大盤~41,575 (較49,968跌-16.8%) 11/5完成"
     },
     {
-      "tier": "L2 半山腰",
+      "tier": "階段二 年線倉",
       "weight": "15%",
-      "done": false,
-      "chip_target": "<=160%",
-      "price_target": 14.05,
-      "note": "0.500回撤位 或 >=173%右側補倉"
+      "done": true,
+      "chip_target": "跳空達標",
+      "price_target": 13.74,
+      "note": "大盤~38,500 (較49,968跌-23.0%) 11/6完成"
     },
     {
-      "tier": "L3 半年上限",
+      "tier": "階段三 半年上限",
       "weight": "20%",
       "done": false,
-      "chip_target": "<=155%",
-      "price_target": 13.3,
-      "note": "★前半年上限 (0.618+年線共振)"
+      "chip_target": "<=152%",
+      "price_target": 12.6,
+      "note": "★大盤~35,500 (較49,968跌-29.0% 斷頭狙擊)"
     },
     {
-      "tier": "L4 條件上限",
+      "tier": "階段四 條件上限",
       "weight": "25%",
       "done": false,
-      "chip_target": "<=150%",
-      "price_target": 12.45,
-      "note": "★第一年條件上限 (須過利率/現金流審查)"
+      "chip_target": "<=146%",
+      "price_target": 11.7,
+      "note": "★大盤~33,000 (較49,968跌-34.0% 須雙重審查)"
     },
     {
-      "tier": "L5 常態封印",
+      "tier": "階段五 常態封印",
       "weight": "25%",
       "done": false,
-      "chip_target": "<=145%",
-      "price_target": 11.56,
-      "note": "🔒常態封印 (保留免息彈性)"
+      "chip_target": "<=142%",
+      "price_target": 10.6,
+      "note": "🔒大盤~30,000 (較49,968跌-40.0% 封印免息)"
     }
   ],
   "us_tiers": [
     {
-      "tier": "L1 方案A",
+      "tier": "階段一 首倉",
       "weight": "15%",
-      "done": false,
-      "vix_target": "台幣<=32.6",
-      "price_target": 695.0,
-      "note": "方案A待命 (等回測<=$695或台幣升值)"
+      "done": true,
+      "vix_target": "方案A達標",
+      "price_target": 674.0,
+      "note": "較選後高點-4.4% (11/6 委託完成)"
     },
     {
-      "tier": "L2 波動層",
+      "tier": "階段二 波動層",
       "weight": "15%",
       "done": false,
       "vix_target": "VIX>=25",
-      "price_target": 658.8,
-      "note": "VOO -5.0% 回測季線"
+      "price_target": 640.3,
+      "note": "較L1再跌-5% (較高點-9.2% 測半年線)"
     },
     {
-      "tier": "L3 半年上限",
+      "tier": "階段三 半年上限",
       "weight": "20%",
       "done": false,
       "vix_target": "VIX>=30",
-      "price_target": 624.2,
-      "note": "★前半年上限 (VOO -10% 測年線)"
+      "price_target": 606.6,
+      "note": "★較L1再跌-10% (較高點-13.9% 測年線)"
     },
     {
-      "tier": "L4 條件上限",
+      "tier": "階段四 條件上限",
       "weight": "25%",
       "done": false,
       "vix_target": "VIX>=35",
-      "price_target": 589.5,
-      "note": "★第一年條件上限 (VOO -15%)"
+      "price_target": 572.9,
+      "note": "★較L1再跌-15% (較高點-18.7% 須雙重審查)"
     },
     {
-      "tier": "L5 常態封印",
+      "tier": "階段五 常態封印",
       "weight": "25%",
       "done": false,
       "vix_target": "VIX>=40",
-      "price_target": 554.8,
-      "note": "🔒常態封印 (VOO -20% 技術熊市)"
+      "price_target": 539.2,
+      "note": "🔒較L1再跌-20% (較高點-23.5% 封印免息)"
     }
   ],
   "checks": [
@@ -1124,7 +1124,7 @@
     {
       "passed": true,
       "label": "前半年 50% 流量上限檢核",
-      "detail": "目前總動用進度 12.0% (低於前 6 個月 50% 硬性上限)"
+      "detail": "目前總動用進度 27.0% (台股L1+L2、美股L1完成，低於50%上限)"
     },
     {
       "passed": true,
@@ -1133,13 +1133,13 @@
     },
     {
       "passed": true,
-      "label": "外資匯率安全濾網 (< 33.10)",
-      "detail": "目前 USD/TWD 為 33.04，未觸及 33.10 失控貶值線"
+      "label": "外資匯率安全濾網 (< 33.15)",
+      "detail": "目前 USD/TWD 為 32.93，階段三出手前須確認台幣止貶"
     },
     {
       "passed": true,
-      "label": "帳面回撤 -15% 冷靜期檢核",
-      "detail": "目前 009816 較基準價漲跌 +0.00%，未觸發 -15% 強制冷靜期"
+      "label": "總持倉均價回撤 -15% 檢核",
+      "detail": "目前 009816 較總均價 (14.3元) 漲跌 -2.10%"
     }
   ]
 }
