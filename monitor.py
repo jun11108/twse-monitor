@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import json
 import smtplib
 import traceback
@@ -60,6 +61,7 @@ VIX_L5 = 40.0
 
 
 def get_twse_data():
+    print("[1/4] 正在啟動瀏覽器抓取證交所全市場擔保維持率...")
     info = {
         "date": "前一個開盤日",
         "ratio": None,
@@ -140,8 +142,8 @@ def get_twse_data():
                     pass
 
             browser.close()
-    except Exception:
-        pass
+    except Exception as e:
+        print("TWSE Playwright error:", e)
 
     clean_vis = "\n".join(vis_texts)
     compact = re.sub(r"\s+", " ", clean_vis).strip()
@@ -183,10 +185,12 @@ def get_twse_data():
     if m4:
         info["liq_amt"] = m4.group(1) + " 億元"
 
+    print(f"TWSE 抓取結果: 日期={info['date']}, 維持率={info['ratio']}")
     return info
 
 
 def get_market_indicators_and_history():
+    print("[2/4] 正在抓取 Yahoo Finance 近60日股價與匯率...")
     p9816, pvoo, vix, usd_twd, taiex = None, None, None, None, None
     hist_data = {"9816": [], "voo": [], "vix": [], "fx": []}
     try:
@@ -212,8 +216,9 @@ def get_market_indicators_and_history():
         vix, hist_data["vix"] = fetch_series("^VIX", 2)
         usd_twd, hist_data["fx"] = fetch_series("TWD=X", 2)
         taiex, _ = fetch_series("^TWII", 0)
-    except Exception:
-        pass
+    except Exception as e:
+        print("yfinance error:", e)
+    print(f"Yahoo 抓取結果: 009816={p9816}, VOO={pvoo}, VIX={vix}, TWD={usd_twd}")
     return p9816, pvoo, vix, usd_twd, taiex, hist_data
 
 
@@ -259,6 +264,7 @@ def dist_str(curr, target):
 
 
 def save_web_json(twse, p9816, pvoo, vix, usd_twd, hist_data, badge_type, title_clean, do_now, watch_next):
+    print("[3/4] 正在寫入 data/latest.json 供網頁戰情室讀取...")
     os.makedirs("data", exist_ok=True)
     tz_tw = timezone(timedelta(hours=8))
     now_str = datetime.now(tz_tw).strftime("%Y-%m-%d %H:%M")
@@ -338,13 +344,16 @@ def save_web_json(twse, p9816, pvoo, vix, usd_twd, hist_data, badge_type, title_
 
     with open("data/latest.json", "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
+    print("data/latest.json 寫入成功！")
 
 
 def send_mail(subject, html_body):
+    print("[4/4] 正在透過 Gmail SMTP 發送信件...")
     sender = os.environ.get("GMAIL_USER", "").strip()
     password = os.environ.get("GMAIL_APP_PASSWORD", "").replace(" ", "").strip()
     recipient = os.environ.get("NOTIFY_EMAIL", sender).strip()
     if not sender or not password:
+        print("未偵測到 GMAIL_USER 或 GMAIL_APP_PASSWORD 環境變數！")
         return
 
     msg = MIMEMultipart("alternative")
@@ -356,6 +365,7 @@ def send_mail(subject, html_body):
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
         s.login(sender, password)
         s.sendmail(sender, [recipient], msg.as_string())
+    print("Email 發送成功！收件人:", recipient)
 
 
 def main():
@@ -397,58 +407,4 @@ def main():
             tw_alerts.append(f"📉 <b>【台股階段四 (25% = 85萬)】009816 股價達標</b>：最新收盤 <b>{p9816:.2f} 元</b> (&le;{P9816_L4:.2f}元)，通過審查後可買進 85.0 萬元。")
         elif p9816 <= P9816_L3:
             badge_type = "BUY"
-            tw_alerts.append(f"🎯 <b>【台股階段三 (20% = 68萬・前半年上限)】009816 股價達標</b>：最新收盤 <b>{p9816:.2f} 元</b> (&le;{P9816_L3:.2f}元)，確認台幣止貶後可單筆買進 68.0 萬元{fx_note}。")
-
-    if vix is not None:
-        if vix >= VIX_L5:
-            badge_type = "BUY"
-            us_alerts.append(f"🌎 <b>【美股階段五】VIX 達封印線</b>：VIX 飆至 <b>{vix:.2f}</b> (&ge;{VIX_L5})！")
-        elif vix >= VIX_L4:
-            badge_type = "BUY"
-            us_alerts.append(f"🌎 <b>【美股階段四 (25% = 21.25萬)】VIX 達條件上限</b>：VIX 升至 <b>{vix:.2f}</b> (&ge;{VIX_L4})！")
-        elif vix >= VIX_L3:
-            badge_type = "BUY"
-            us_alerts.append(f"🌎 <b>【美股階段三 (20% = 17.00萬・前半年上限)】VIX 達標</b>：VIX 升至 <b>{vix:.2f}</b> (&ge;{VIX_L3})！")
-        elif vix >= VIX_L2:
-            badge_type = "BUY"
-            us_alerts.append(f"🌎 <b>【美股階段二 (15% = 12.75萬)】VIX 達標</b>：VIX 升至 <b>{vix:.2f}</b> (&ge;{VIX_L2})！")
-
-    if pvoo is not None:
-        if pvoo <= PVOO_L5:
-            badge_type = "BUY"
-            us_alerts.append(f"📉 <b>【美股階段五】VOO 股價達封印線</b>：最新收盤 <b>\${pvoo:.2f}</b> (&le;\${PVOO_L5:.2f})。")
-        elif pvoo <= PVOO_L4:
-            badge_type = "BUY"
-            us_alerts.append(f"📉 <b>【美股階段四 (25% = 21.25萬)】VOO 股價達標</b>：最新收盤 <b>\${pvoo:.2f}</b> (&le;\${PVOO_L4:.2f})。")
-        elif pvoo <= PVOO_L3:
-            badge_type = "BUY"
-            us_alerts.append(f"📉 <b>【美股階段三 (20% = 17.00萬・前半年上限)】VOO 股價達標</b>：最新收盤 <b>\${pvoo:.2f}</b> (&le;\${PVOO_L3:.2f})。")
-        elif pvoo <= PVOO_L2:
-            badge_type = "BUY"
-            us_alerts.append(f"📉 <b>【美股階段二 (15% = 12.75萬)】VOO 股價達標</b>：最新收盤 <b>\${pvoo:.2f}</b> (&le;\${PVOO_L2:.2f})。")
-
-    r_gap = f"維持率距階段三({CHIP_L3:.0f}%)尚差 {ratio - CHIP_L3:+.2f}%" if ratio else "維持率讀取中"
-    p_gap = f"009816距階段三({P9816_L3:.2f}元)尚差 {dist_str(p9816, P9816_L3)}" if p9816 else ""
-    v_gap = f"VOO距階段二(${PVOO_L2:.2f})尚差 {dist_str(pvoo, PVOO_L2)}" if pvoo else ""
-    watch_next_web = " ｜ ".join([x for x in [r_gap, p_gap, v_gap] if x])
-
-    save_web_json(twse, p9816, pvoo, vix, usd_twd, hist_data, badge_type, title, do_now_web, watch_next_web)
-
-    all_alerts = tw_alerts + us_alerts
-    if not all_alerts:
-        all_alerts.append(
-            f"<b>目前已完成建倉部位</b>：台股 009816 <b>階段一（34張@14.91元）＋階段二（37張@13.74元）＝ 共 {TW_TOTAL_LOTS} 張（總均價 {P9816_AVG_COST:.2f} 元，動用 102.0 萬）</b> ＋ 美股 VOO <b>階段一（委託 ${PVOO_L1_USD:,} USD / 動用 12.75 萬）</b>。<br>"
-            f"<b>今日結論</b>：前一個開盤日台美指標皆未觸及下一階段（台股階段三 &le;12.60元 或維持率 &le;152% / 美股階段二 VIX&ge;25 或 &le;${PVOO_L2:.2f}），請安心抱牢低成本部位，未動用之 <b>460.25 萬額度</b> 留在專戶繼續享 0 利息！"
-        )
-
-    r_str = f"{ratio:.2f}% ({twse['ratio_diff']})" if ratio is not None else "請點下方官方連結查看"
-    r_table_str = f"{ratio:.2f}%" if ratio is not None else "依官方數值"
-    p_str = f"{p9816:.2f} 元" if p9816 is not None else "N/A"
-    v_str = f"${pvoo:.2f} USD" if pvoo is not None else "N/A"
-    vix_str = f"{vix:.2f}" if vix is not None else "N/A"
-    fx_str = f"{usd_twd:.2f} 元" if usd_twd is not None else "N/A"
-    taiex_str = f"{taiex:,.0f} 點 (較最高點 49,968 跌 {taiex - TAIEX_PEAK:,.0f} 點 / {(taiex - TAIEX_PEAK)/TAIEX_PEAK*100:+.2f}%)" if taiex else "依盤後收盤點位"
-
-    if p9816 is not None:
-        tw_mv = round(p9816 * TW_TOTAL_LOTS * 1000 / 10000, 2)
-        tw_cost = rou
+           
