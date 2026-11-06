@@ -9,12 +9,12 @@ from email.mime.multipart import MIMEMultipart
 
 # ================= 1. 各階段建倉進度開關 (11/6 最終實戰狀態) =================
 TW_L1_DONE = True       # 台股階段一 (15% = 51萬，34張 @ 14.91元) 11/5 已完成
-TW_L2_DONE = True       # 台股階段二 (15% = 51萬，37張 @ 13.74元) 11/6 已完成！
+TW_L2_DONE = True       # 台股階段二 (15% = 51萬，37張 @ 13.74元) 11/6 已完成
 TW_L3_DONE = False      # 台股階段三 (20% = 68萬，★前半年上限) 待命：下週斷頭狙擊倉
 TW_L4_DONE = False      # 台股階段四 (25% = 85萬，★第一年條件上限) 待命：須過利率/租金審查
 TW_L5_DONE = False      # 台股階段五 (25% = 85萬，🔒常態封印) 暫不執行
 
-VOO_L1_DONE = True      # 美股階段一 (15% = 12.75萬 / \$3,850 USD) 11/6 已委託完成！
+VOO_L1_DONE = True      # 美股階段一 (15% = 12.75萬 / \$3,850 USD) 11/6 已委託完成
 VOO_L2_DONE = False     # 美股階段二 (15% = 12.75萬) 待命
 VOO_L3_DONE = False     # 美股階段三 (20% = 17.00萬，★前半年上限) 待命
 VOO_L4_DONE = False     # 美股階段四 (25% = 21.25萬，★第一年條件上限) 待命
@@ -34,29 +34,28 @@ P9816_AVG_COST = round(
 
 PVOO_L1_PRICE = 674.00  # 美股 VOO 階段一 (\$3,850 USD 委託中，成交後可微調為實際成交均價)
 PVOO_L1_USD = 3850      # 階段一委託美金金額
-PVOO_HIGH_REF = 704.78  # 選後高點參考價
 
 # ================= 3. 台股 009816 五階段觸發參數 (含大盤49,968跌幅) =================
 TAIEX_PEAK = 49968      # 台股歷史最高點
-P9816_L3 = 12.60        # 階段三 (20% = 68萬)：大盤 ~35,500點 (較高點 -28.95% 破年線斷頭區)
-P9816_L4 = 11.70        # 階段四 (25% = 85萬)：大盤 ~33,000點 (較高點 -33.96% 2022空頭極限)
-P9816_L5 = 10.60        # 階段五 (25% = 85萬)：大盤 ~30,000點 (較高點 -39.96% 金融海嘯封印線)
+P9816_L3 = 12.60        # 階段三 (20% = 68萬)：大盤 ~35,500點 (-28.95%)
+P9816_L4 = 11.70        # 階段四 (25% = 85萬)：大盤 ~33,000點 (-33.96%)
+P9816_L5 = 10.60        # 階段五 (25% = 85萬)：大盤 ~30,000點 (-39.96%)
 
-CHIP_L2 = 158.0         # 階段二維持率 (11/6 已於 13.74 元執行完畢)
-CHIP_L3 = 152.0         # 階段三證交所維持率 <= 152.0% (對應 CM估 ~128%，下週斷頭狙擊)
-CHIP_L4 = 146.0         # 階段四證交所維持率 <= 146.0% (對應 CM估 ~123%，第一年條件上限)
-CHIP_L5 = 142.0         # 階段五證交所維持率 <= 142.0% (對應 CM估 <120%，常態封印)
+CHIP_L2 = 158.0         # 階段二維持率 (已執行)
+CHIP_L3 = 152.0         # 階段三證交所維持率 <= 152.0%
+CHIP_L4 = 146.0         # 階段四證交所維持率 <= 146.0%
+CHIP_L5 = 142.0         # 階段五證交所維持率 <= 142.0%
 
-# ================= 4. 美股 VOO 獨立五階段觸發參數 (以階段一基準價計算) =================
-PVOO_L2 = round(PVOO_L1_PRICE * (1 - 0.05), 2)  # 階段二 (15% = 12.75萬)：較L1再跌 -5% (~\$640.30)
-PVOO_L3 = round(PVOO_L1_PRICE * (1 - 0.10), 2)  # 階段三 (20% = 17.00萬)：較L1再跌 -10% (~\$606.60)
-PVOO_L4 = round(PVOO_L1_PRICE * (1 - 0.15), 2)  # 階段四 (25% = 21.25萬)：較L1再跌 -15% (~\$572.90)
-PVOO_L5 = round(PVOO_L1_PRICE * (1 - 0.20), 2)  # 階段五 (25% = 21.25萬)：較L1再跌 -20% (~\$539.20)
+# ================= 4. 美股 VOO 獨立五階段觸發參數 =================
+PVOO_L2 = round(PVOO_L1_PRICE * (1 - 0.05), 2)  # 階段二 (-5% = \$640.30)
+PVOO_L3 = round(PVOO_L1_PRICE * (1 - 0.10), 2)  # 階段三 (-10% = \$606.60)
+PVOO_L4 = round(PVOO_L1_PRICE * (1 - 0.15), 2)  # 階段四 (-15% = \$572.90)
+PVOO_L5 = round(PVOO_L1_PRICE * (1 - 0.20), 2)  # 階段五 (-20% = \$539.20)
 
-VIX_L2 = 25.0           # 階段二 VIX >= 25.0 (波動升溫)
-VIX_L3 = 30.0           # 階段三 VIX >= 30.0 (高度恐慌，★前半年上限)
-VIX_L4 = 35.0           # 階段四 VIX >= 35.0 (系統性拋售，★第一年條件上限)
-VIX_L5 = 40.0           # 階段五 VIX >= 40.0 (非理性崩盤，🔒常態封印)
+VIX_L2 = 25.0
+VIX_L3 = 30.0
+VIX_L4 = 35.0
+VIX_L5 = 40.0
 # ======================================================================================
 
 
@@ -84,7 +83,6 @@ def get_twse_data():
                 locale="zh-TW"
             )
             page = context.new_page()
-
             page.goto("https://www.twse.com.tw/dashboard/zh/credit/margin.html", wait_until="networkidle", timeout=45000)
             page.wait_for_timeout(4000)
 
@@ -373,57 +371,47 @@ def main():
 
     fx_note = f"（目前台幣匯率 {usd_twd:.2f}，請確認止貶回穩）" if usd_twd else ""
 
-    # --- 1. 台股階段三～階段五監控 ---
     if ratio is not None:
         if ratio <= CHIP_L5:
             title = f"🚨【台股階段五封印區警報】維持率 {ratio:.2f}%"
             badge_type = "BUY"
             do_now_web = f"證交所維持率跌至 {ratio:.2f}% (<={CHIP_L5}%)，觸及階段五極端海嘯線！"
-            tw_alerts.append(f"🔥 <b>【台股階段五 (25% = 85萬)】維持率觸及封印線</b>：維持率跌至 <b>{ratio:.2f}%</b> (&le;{CHIP_L5}%)！此為常態封印額度，僅在十年一遇大盤 30,000 點 (-40%) 且通過家庭財務審查後解封。")
+            tw_alerts.append(f"🔥 <b>【台股階段五 (25% = 85萬)】維持率觸及封印線</b>：維持率跌至 <b>{ratio:.2f}%</b> (&le;{CHIP_L5}%)！")
         elif ratio <= CHIP_L4:
             title = f"🚨【台股階段四條件上限警報】維持率 {ratio:.2f}%"
             badge_type = "BUY"
             do_now_web = f"證交所維持率跌至 {ratio:.2f}% (<={CHIP_L4}%)，觸發台股階段四 (25%)！"
-            tw_alerts.append(f"🔥 <b>【台股階段四 (25% = 85萬)】維持率達標</b>：維持率跌至 <b>{ratio:.2f}%</b> (&le;{CHIP_L4}%)！請確認通過【①房貸利率&lt;4.0%、②月租金結餘&gt;20,250元】雙重審查後，單筆提領 <b>85.0 萬元</b>買進約 72.6 張 009816。")
+            tw_alerts.append(f"🔥 <b>【台股階段四 (25% = 85萬)】維持率達標</b>：維持率跌至 <b>{ratio:.2f}%</b> (&le;{CHIP_L4}%)！請確認通過利率與租金雙重審查後單筆買進 85.0 萬元。")
         elif ratio <= CHIP_L3:
             title = f"⚠️【台股階段三斷頭狙擊警報】維持率 {ratio:.2f}%"
             badge_type = "BUY"
             do_now_web = f"證交所維持率跌至 {ratio:.2f}% (<={CHIP_L3}%)，觸發台股階段三 (20% 前半年上限)！"
-            tw_alerts.append(f"🎯 <b>【台股階段三 (20% = 68萬・前半年上限)】籌碼斷頭訊號達標</b>：維持率跌至 <b>{ratio:.2f}%</b> (&le;{CHIP_L3}%)！請確認早盤融資斷頭賣壓宣洩且台幣止貶後，單筆提領 <b>68.0 萬元</b>買進約 54.0 張 009816（買滿後前半年台股達 170 萬上限即停手）{fx_note}。")
+            tw_alerts.append(f"🎯 <b>【台股階段三 (20% = 68萬・前半年上限)】籌碼斷頭訊號達標</b>：維持率跌至 <b>{ratio:.2f}%</b> (&le;{CHIP_L3}%)！請確認早盤融資斷頭賣壓宣洩且台幣止貶後，單筆提領 <b>68.0 萬元</b>買進約 54.0 張 009816{fx_note}。")
 
     if p9816 is not None:
         if p9816 <= P9816_L5:
             badge_type = "BUY"
-            tw_alerts.append(f"📉 <b>【台股階段五】009816 股價觸及封印線</b>：最新收盤 <b>{p9816:.2f} 元</b> (&le;{P9816_L5:.2f}元，對應大盤 ~30,000 點 / 較高點 -40%)。")
+            tw_alerts.append(f"📉 <b>【台股階段五】009816 股價觸及封印線</b>：最新收盤 <b>{p9816:.2f} 元</b> (&le;{P9816_L5:.2f}元)。")
         elif p9816 <= P9816_L4:
             badge_type = "BUY"
-            if "警報" not in title:
-                title = f"🚨【台股階段四股價達標】009816 收 {p9816:.2f} 元"
-            tw_alerts.append(f"📉 <b>【台股階段四 (25% = 85萬)】009816 股價達標</b>：最新收盤 <b>{p9816:.2f} 元</b> (&le;{P9816_L4:.2f}元，對應大盤 ~33,000 點 / 較高點 -34%)，通過利率與租金審查後可單筆買進 85.0 萬元（約 72.6 張）。")
+            tw_alerts.append(f"📉 <b>【台股階段四 (25% = 85萬)】009816 股價達標</b>：最新收盤 <b>{p9816:.2f} 元</b> (&le;{P9816_L4:.2f}元)，通過審查後可買進 85.0 萬元。")
         elif p9816 <= P9816_L3:
             badge_type = "BUY"
-            if "警報" not in title:
-                title = f"⚠️【台股階段三股價達標】009816 收 {p9816:.2f} 元"
-            tw_alerts.append(f"🎯 <b>【台股階段三 (20% = 68萬・前半年上限)】009816 股價達標</b>：最新收盤 <b>{p9816:.2f} 元</b> (&le;{P9816_L3:.2f}元，對應大盤 ~35,500 點 / 較高點 -29%)，確認台幣止貶後可單筆買進 68.0 萬元（約 54.0 張）{fx_note}。")
+            tw_alerts.append(f"🎯 <b>【台股階段三 (20% = 68萬・前半年上限)】009816 股價達標</b>：最新收盤 <b>{p9816:.2f} 元</b> (&le;{P9816_L3:.2f}元)，確認台幣止貶後可單筆買進 68.0 萬元{fx_note}。")
 
-    # --- 2. 美股階段二～階段五監控 ---
     if vix is not None:
         if vix >= VIX_L5:
             badge_type = "BUY"
-            us_alerts.append(f"🌎 <b>【美股階段五 (25% = 21.25萬)】VIX 達封印線</b>：VIX 飆至 <b>{vix:.2f}</b> (&ge;{VIX_L5})！")
+            us_alerts.append(f"🌎 <b>【美股階段五】VIX 達封印線</b>：VIX 飆至 <b>{vix:.2f}</b> (&ge;{VIX_L5})！")
         elif vix >= VIX_L4:
             badge_type = "BUY"
-            us_alerts.append(f"🌎 <b>【美股階段四 (25% = 21.25萬)】VIX 達條件上限</b>：VIX 升至 <b>{vix:.2f}</b> (&ge;{VIX_L4})！通過利率與租金審查後可提領 21.25 萬元 (~\$6,460) 買進 VOO。")
+            us_alerts.append(f"🌎 <b>【美股階段四 (25% = 21.25萬)】VIX 達條件上限</b>：VIX 升至 <b>{vix:.2f}</b> (&ge;{VIX_L4})！")
         elif vix >= VIX_L3:
             badge_type = "BUY"
-            if "警報" not in title:
-                title = f"⚠️【美股階段三前半年上限警報】VIX 升至 {vix:.2f}"
-            us_alerts.append(f"🌎 <b>【美股階段三 (20% = 17.00萬・前半年上限)】VIX 達標</b>：VIX 升至 <b>{vix:.2f}</b> (&ge;{VIX_L3})！請提領 <b>17.00 萬元 (~\$5,170)</b> 買進約 8.4 股 VOO。")
+            us_alerts.append(f"🌎 <b>【美股階段三 (20% = 17.00萬・前半年上限)】VIX 達標</b>：VIX 升至 <b>{vix:.2f}</b> (&ge;{VIX_L3})！")
         elif vix >= VIX_L2:
             badge_type = "BUY"
-            if "警報" not in title:
-                title = f"📢【美股階段二波動警報】VIX 升至 {vix:.2f}"
-            us_alerts.append(f"🌎 <b>【美股階段二 (15% = 12.75萬)】VIX 達標</b>：VIX 升至 <b>{vix:.2f}</b> (&ge;{VIX_L2})！請提領 <b>12.75 萬元 (~\$3,880)</b> 買進約 6.0 股 VOO。")
+            us_alerts.append(f"🌎 <b>【美股階段二 (15% = 12.75萬)】VIX 達標</b>：VIX 升至 <b>{vix:.2f}</b> (&ge;{VIX_L2})！")
 
     if pvoo is not None:
         if pvoo <= PVOO_L5:
@@ -431,15 +419,14 @@ def main():
             us_alerts.append(f"📉 <b>【美股階段五】VOO 股價達封印線</b>：最新收盤 <b>\${pvoo:.2f}</b> (&le;\${PVOO_L5:.2f})。")
         elif pvoo <= PVOO_L4:
             badge_type = "BUY"
-            us_alerts.append(f"📉 <b>【美股階段四 (25% = 21.25萬)】VOO 股價達標</b>：最新收盤 <b>\${pvoo:.2f}</b> (&le;\${PVOO_L4:.2f}，較L1跌-15%)，審查後可買進 21.25 萬元。")
+            us_alerts.append(f"📉 <b>【美股階段四 (25% = 21.25萬)】VOO 股價達標</b>：最新收盤 <b>\${pvoo:.2f}</b> (&le;\${PVOO_L4:.2f})。")
         elif pvoo <= PVOO_L3:
             badge_type = "BUY"
-            us_alerts.append(f"📉 <b>【美股階段三 (20% = 17.00萬・前半年上限)】VOO 股價達標</b>：最新收盤 <b>\${pvoo:.2f}</b> (&le;\${PVOO_L3:.2f}，較L1跌-10%)，建議買進 17.00 萬元（約 8.4 股）。")
+            us_alerts.append(f"📉 <b>【美股階段三 (20% = 17.00萬・前半年上限)】VOO 股價達標</b>：最新收盤 <b>\${pvoo:.2f}</b> (&le;\${PVOO_L3:.2f})。")
         elif pvoo <= PVOO_L2:
             badge_type = "BUY"
-            us_alerts.append(f"📉 <b>【美股階段二 (15% = 12.75萬)】VOO 股價達標</b>：最新收盤 <b>\${pvoo:.2f}</b> (&le;\${PVOO_L2:.2f}，較L1跌-5%)，建議買進 12.75 萬元（約 6.0 股）。")
+            us_alerts.append(f"📉 <b>【美股階段二 (15% = 12.75萬)】VOO 股價達標</b>：最新收盤 <b>\${pvoo:.2f}</b> (&le;\${PVOO_L2:.2f})。")
 
-    # 計算距離下一階段觸發差距
     r_gap = f"維持率距階段三({CHIP_L3:.0f}%)尚差 {ratio - CHIP_L3:+.2f}%" if ratio else "維持率讀取中"
     p_gap = f"009816距階段三({P9816_L3:.2f}元)尚差 {dist_str(p9816, P9816_L3)}" if p9816 else ""
     v_gap = f"VOO距階段二(${PVOO_L2:.2f})尚差 {dist_str(pvoo, PVOO_L2)}" if pvoo else ""
@@ -462,73 +449,6 @@ def main():
     fx_str = f"{usd_twd:.2f} 元" if usd_twd is not None else "N/A"
     taiex_str = f"{taiex:,.0f} 點 (較最高點 49,968 跌 {taiex - TAIEX_PEAK:,.0f} 點 / {(taiex - TAIEX_PEAK)/TAIEX_PEAK*100:+.2f}%)" if taiex else "依盤後收盤點位"
 
-    # 計算 71 張 009816 目前市值與未實現損益
     if p9816 is not None:
         tw_mv = round(p9816 * TW_TOTAL_LOTS * 1000 / 10000, 2)
-        tw_cost = round((P9816_L1_PRICE * P9816_L1_LOTS + P9816_L2_PRICE * P9816_L2_LOTS) * 1000 / 10000, 2)
-        tw_pnl = round(tw_mv - tw_cost, 2)
-        tw_pnl_pct = (p9816 - P9816_AVG_COST) / P9816_AVG_COST * 100
-        tw_pnl_str = f"市值約 <b>{tw_mv:.2f} 萬</b>（投入成本 {tw_cost:.2f} 萬 / 總均價 <b>{P9816_AVG_COST:.2f} 元</b> ｜ 損益：<b>{tw_pnl:+.2f} 萬 / {tw_pnl_pct:+.2f}%</b>）"
-    else:
-        tw_pnl_str = f"持有 {TW_TOTAL_LOTS} 張（總均價 {P9816_AVG_COST:.2f} 元）"
-
-    li_html = "".join(["<li style='margin-bottom:8px;'>" + a + "</li>" for a in all_alerts])
-
-    lines = [
-        "<div style='font-family: Microsoft JhengHei, sans-serif; line-height: 1.65; color: #222; max-width: 900px;'>",
-        "<h2 style='color:#1a365d; border-bottom: 2px solid #1a365d; padding-bottom: 8px;'>🌅 575萬理財型房貸投資計畫—晨間 07:00 盤前深度檢核報告</h2>",
-
-        # 區塊 1：市場最新指標與持倉水位總覽框
-        "<div style='background-color: #f8fafc; border: 1px solid #cbd5e1; border-left: 5px solid #0275d8; padding: 14px 18px; border-radius: 6px; margin-bottom: 18px;'>",
-        "<h4 style='margin-top:0; margin-bottom:8px; color:#0275d8;'>📊 一、 前一交易日市場核心指標與您目前的持倉／現金流總覽</h4>",
-        "<b>• 資料基準日</b>：" + twse["date"] + " ｜ <b>台股加權指數收盤</b>：" + taiex_str + "<br>",
-        "<b>• 【台股籌碼】證交所全市場擔保維持率</b>：<span style='font-size:18px; color:#d9534f;'><b>" + r_str + "</b></span>（追繳：" + twse["mc_acc"] + " / " + twse["mc_amt"] + " ｜ 處分：" + twse["liq_acc"] + " / " + twse["liq_amt"] + "）<br>",
-        "<b>• 【外資動向】美元兌新台幣 (USD/TWD)</b>：<span style='color:#d9534f;'><b>" + fx_str + "</b></span>（33.0~33.1 為外資止貶觀察線）<br>",
-        "<b>• 【台股核心 80%】009816 最新收盤價</b>：<span style='font-size:17px; color:#0275d8;'><b>" + p_str + "</b></span> ｜ <b>目前持倉（34張@14.91 + 37張@13.74 = 共 " + str(TW_TOTAL_LOTS) + " 張）</b>：" + tw_pnl_str + "<br>",
-        "<b>• 【美股衛星 20%】VOO 最新收盤價</b>：<span style='font-size:17px; color:#0275d8;'><b>" + v_str + "</b></span>（階段1 已委託 \$3,850 USD） ｜ <b>VIX 恐慌指數</b>：<b style='color:#d9534f;'>" + vix_str + "</b><br>",
-        "<b>• 【房貸動用與利息安全邊際】</b>：目前已動用 <b>114.75 萬元 (27.0%)</b>［台股 102 萬 + 美股 12.75 萬］ ｜ <b>現況 3.05% 月息僅 <span style='color:#2b8a3e;'>2,917 元／月</span></b>（國泰投資戶 27,000 元純租金付息後每月淨剩 <b>+24,083 元</b>，利息覆蓋率高達 <b>9.26 倍</b>；4.5% 升息壓力下覆蓋率仍達 <b>4.71 倍</b>！）",
-        "</div>",
-
-        # 區塊 2：今日行動結論
-        "<h3 style='margin-bottom:8px;'>" + title + "</h3>",
-        "<ul style='background:#fffdf5; padding:12px 18px 12px 34px; border:1px solid #f0e6cc; border-radius:6px;'>" + li_html + "</ul>",
-
-        # 區塊 3：台股 009816 五階段完整資訊大表
-        "<h4 style='margin-top:22px; margin-bottom:8px; color:#1a365d;'>🔺 二、 軌道一：台股 009816 五階段完整規劃與即時距離表（80% 權重 ＝ 總額上限 340 萬）</h4>",
-        "<table border='1' cellpadding='7' cellspacing='0' style='border-collapse: collapse; width: 100%; font-size: 12.5px; border-color: #cbd5e1;'>",
-        "<tr style='background-color: #1e293b; color: #ffffff; text-align: left;'>",
-        "<th>階段與定位</th><th>單筆金額<br>(張數)</th><th>累計台股<br>(累計月息)</th><th>對應大盤預估點位<br>(技術面支撐意義)</th><th>較高點(49,968)<br>累積跌點與跌幅</th><th>證交所維持率觸發<br>(對應CM估)</th><th>009816 成交/觸發價<br>(距現價差距)</th><th>各階段執行狀態與實戰規則</th></tr>",
-
-        "<tr style='background-color: #e8f8f5;'>",
-        "<td><b>階段一 (15%)</b><br>基本首倉</td><td><b>51.0 萬</b><br>(<b>34張</b>)</td><td>51.0 萬<br>(1,296元)</td><td><b>41,575 點</b><br>0.382 黃金分割回撤</td><td>跌 -8,393 點<br><b>-16.80%</b></td><td>進場時 165.53%<br>(CM估 142.4%)</td><td><b>14.91 元</b><br>(11/5 成交)</td><td><b>✅【11/05 已完成】</b><br>已單筆買進 34 張（投入 50.69 萬）。</td></tr>",
-
-        "<tr style='background-color: #e8f8f5;'>",
-        "<td><b>階段二 (15%)</b><br>年線保衛倉</td><td><b>51.0 萬</b><br>(<b>37張</b>)</td><td><b>102.0 萬</b><br>(2,593元)</td><td><b>37,837~38,500點</b><br><b>240日年線(37,877)保衛區</b></td><td>跌 -11,468~-12,131點<br><b>-23.0% ~ -24.3%</b></td><td>11/6 跳空達標<br>(年線支撐區)</td><td><b>13.74 元</b><br>(11/6 成交)</td><td><b>✅【11/06 已完成】</b><br>已單筆買進 37 張（投入 50.84 萬）！與階段一合計持有 <b>71 張 (總均價降至 " + f"{P9816_AVG_COST:.2f} 元</b>)。</td></tr>",
-
-        "<tr style='background-color: #fff9e6;'>",
-        "<td><b>階段三 (20%)</b><br>★前半年上限</td><td><b>68.0 萬</b><br>(~54.0張)</td><td><b>170.0 萬</b><br>(4,321元)</td><td><b>35,500 點</b><br>跌破年線之連環斷頭超跌區</td><td>跌 -14,468 點<br><b>-28.95% (近三成)</b></td><td><b>&le; " + f"{CHIP_L3:.1f}%" + "</b> (CM~128%)<br>且處分 &gt; 3.5億<br><i>(距今 " + (f"{ratio - CHIP_L3:+.2f}%" if ratio else "N/A") + ")</i></td><td><b>&le; " + f"{P9816_L3:.2f} 元</b><br><b>(距今 " + dist_str(p9816, P9816_L3) + ")</b></td><td><b>🎯【下週斷頭狙擊倉・前半年上限】</b><br>若下週 T+2 融資斷頭潮殺至 35,500 點 (&le;12.60元) 且台幣止貶，單筆打入 68 萬！買滿後前半年即停手。</td></tr>",
-
-        "<tr>",
-        "<td><b>階段四 (25%)</b><br>★第一年條件上限</td><td><b>85.0 萬</b><br>(~72.6張)</td><td><b>255.0 萬</b><br>(6,481元)</td><td><b>33,000 點</b><br>對標2022空頭最大跌幅支撐</td><td>跌 -16,968 點<br><b>-33.96% (空頭極限)</b></td><td><b>&le; " + f"{CHIP_L4:.1f}%" + "</b> (CM~123%)<br><i>(距今 " + (f"{ratio - CHIP_L4:+.2f}%" if ratio else "N/A") + ")</i></td><td><b>&le; " + f"{P9816_L4:.2f} 元</b><br><b>(距今 " + dist_str(p9816, P9816_L4) + ")</b></td><td><b>🛑【雙重審查關卡】</b><br>須大盤跌至 33,000 點 (-34%)，且通過 <b>①房貸利率&lt;4.0%、②月租結餘&gt;20,250元</b> 雙重審查才准動用！</td></tr>",
-
-        "<tr style='color: #64748b; background-color: #f8fafc;'>",
-        "<td><b>階段五 (25%)</b><br>🔒常態封印額度</td><td><b>85.0 萬</b><br>(~80.2張)</td><td>340.0 萬<br>(常態0元)</td><td><b>30,000 點</b><br>十年一遇金融海嘯級防線</td><td>跌 -19,968 點<br><b>-39.96% (四成黑天鵝)</b></td><td><b>&le; " + f"{CHIP_L5:.1f}%" + "</b> (CM&lt;120%)</td><td><b>&le; " + f"{P9816_L5:.2f} 元</b><br>(距今 " + dist_str(p9816, P9816_L5) + ")</td><td><b>🔒【暫不執行・0 利息】</b><br>常態封印於專戶內，連同 150 萬保留款共維持 <b>256.25 萬</b> 免息安全墊！</td></tr>",
-        "</table>",
-
-        # 區塊 4：美股 VOO 五階段完整資訊大表
-        "<h4 style='margin-top:22px; margin-bottom:8px; color:#1a365d;'>🌎 三、 軌道二：美股 VOO 獨立五階段完整規劃與即時距離表（20% 權重 ＝ 總額上限 85 萬，與台股脫鉤）</h4>",
-        "<table border='1' cellpadding='7' cellspacing='0' style='border-collapse: collapse; width: 100%; font-size: 12.5px; border-color: #cbd5e1;'>",
-        "<tr style='background-color: #0f172a; color: #ffffff; text-align: left;'>",
-        "<th>階段與定位</th><th>單筆金額<br>(美金/股數)</th><th>累計美股<br>(累計月息)</th><th>對應標普 500 位置<br>(較選後高點 \$704.78 跌幅)</th><th>獨立觸發 A：<br>VIX 恐慌指數</th><th>獨立觸發 B：<br>VOO 目標價 (距現價)</th><th>各階段執行狀態與實戰規則</th></tr>",
-
-        "<tr style='background-color: #e8f8f5;'>",
-        "<td><b>階段一 (15%)</b><br>方案A 首倉</td><td><b>12.75 萬</b><br>(<b>\$3,850</b> / ~5.7股)</td><td><b>12.75 萬</b><br>(324元)</td><td>較高點 \$704.78 回檔 <b>-4.36%</b><br>回測月線與季線支撐區</td><td>11/5 美股重挫達標<br>(目前 VIX: " + vix_str + ")</td><td><b>~\$" + f"{PVOO_L1_PRICE:.2f} USD</b><br>(11/6 委託 \$3,850)</td><td><b>✅【11/06 委託完成】</b><br>完美避開前日 \$704.78 高點，於回檔逾 4% 時完成首層委託（另加計既有庫存 21.27 股）。</td></tr>",
-
-        "<tr>",
-        "<td><b>階段二 (15%)</b><br>波動升溫倉</td><td><b>12.75 萬</b><br>(~\$3,880 / 6.0股)</td><td>25.50 萬<br>(648元)</td><td>較高點 \$704.78 跌 <b>-9.15%</b><br>回測 120 日半年線支撐</td><td><b>VIX &ge; " + f"{VIX_L2:.1f}" + "</b><br>波動明顯升溫</td><td><b>&le; \$" + f"{PVOO_L2:.2f} USD</b><br>(較L1 -5%｜<b>距今 " + dist_str(pvoo, PVOO_L2) + "</b>)</td><td><b>⏳【待命中】</b><br>當 VIX &ge; 25 或 VOO 跌至 \$" + f"{PVOO_L2:.2f}" + " 時單筆買進 12.75 萬（或趁台幣升破 32.3 換匯補倉）。</td></tr>",
-
-        "<tr style='background-color: #fff9e6;'>",
-        "<td><b>階段三 (20%)</b><br>★前半年上限</td><td><b>17.00 萬</b><br>(~\$5,170 / 8.4股)</td><td><b>42.50 萬</b><br>(1,080元)</td><td>較高點 \$704.78 跌 <b>-13.93%</b><br>回測 240 日年線鐵板區</td><td><b>VIX &ge; " + f"{VIX_L3:.1f}" + "</b><br>高度恐慌水位</td><td><b>&le; $" + f"{PVOO_L3:.2f} USD</b><br>(較L1 -10%｜<b>距今 " + dist_str(pvoo, PVOO_L3) + "</b>)</td><td><b>🛑【前 6 個月最高上限】</b><br>標普年度中度修正買點，買滿後前半年美股動用即停在 <b>42.5 萬元</b>！</td></tr>",
-
-        "<tr>",
-        "<td><b>階段四 (25%)</b><br>★第一年條件上限</td><td><b>21.25 萬</b><br>(~\$6,460 / 11.3股)</td><td><b>63.75 萬</b><br>(1,620元)</td><td>較高點 \$704.78 跌 <b>-18.71%</b><br>逼近 -20% 準技術性熊市</td><td><b>VIX &ge; " + f"{VIX_L
+        tw_cost = rou
