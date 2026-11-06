@@ -190,6 +190,7 @@ def get_market_indicators_and_history():
 
         def fetch_series(ticker_str, decimals=2):
             df = yf.Ticker(ticker_str).history(period="3mo")
+            df = df.dropna(subset=["Close"])  # 👈 加上這行，自動濾除盤中或假日空值
             if df.empty:
                 return None, []
             latest_val = round(float(df["Close"].iloc[-1]), decimals)
